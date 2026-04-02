@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Drum Overlay - Right Aligned</title>
+    <title>Drum Overlay - Animated</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
@@ -9,22 +9,35 @@
         
         body { 
             margin: 0; 
-            padding: 20px; 
+            padding: 40px; 
             background: transparent; 
             overflow: hidden; 
             font-family: 'Segoe UI', Roboto, sans-serif;
             display: flex;
-            justify-content: flex-end; /* Aligns the box to the right of the screen */
+            justify-content: flex-end; 
         }
 
         #info-box {
             display: flex;
             flex-direction: column;
-            align-items: flex-end; /* Aligns individual text lines to the right */
+            align-items: flex-end; 
             text-align: right;
             pointer-events: none;
             text-transform: uppercase;
-            max-width: 80%; /* Prevents text from hitting the far left edge */
+            /* Animation setup */
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s;
+        }
+
+        /* State when hidden (slid out to the right) */
+        .hidden {
+            transform: translateX(500px);
+            opacity: 0;
+        }
+
+        /* State when visible (normal position) */
+        .visible {
+            transform: translateX(0);
+            opacity: 1;
         }
 
         .requested-by {
@@ -32,13 +45,13 @@
             font-size: 16px;
             font-weight: 700;
             letter-spacing: 1.5px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.5);
+            text-shadow: 2px 2px 4px rgba(0,0,0,1);
             margin-bottom: 2px;
         }
 
         .song-title {
             color: #ffffff;
-            font-size: 32px; /* Slightly larger for impact */
+            font-size: 32px;
             font-weight: 900;
             text-shadow: 3px 3px 6px rgba(0,0,0,1), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
             line-height: 1.1;
@@ -46,7 +59,7 @@
     </style>
 </head>
 <body>
-    <div id="info-box">
+    <div id="info-box" class="visible">
         <span id="display-user" class="requested-by">SYSTEM STANDBY</span>
         <span id="display-title" class="song-title">READY FOR REQUESTS</span>
     </div>
@@ -56,12 +69,38 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        const infoBox = document.getElementById('info-box');
+        const titleEl = document.getElementById('display-title');
+        const userEl = document.getElementById('display-user');
+        
+        let firstLoad = true;
+
         database.ref('currentlyPlaying').on('value', snapshot => {
             const data = snapshot.val();
-            if (data) {
-                document.getElementById('display-title').innerText = data.title;
-                document.getElementById('display-user').innerText = `REQUESTED BY: ${data.user}`;
+            if (!data) return;
+
+            if (firstLoad) {
+                // Just set text immediately on initial load
+                titleEl.innerText = data.title;
+                userEl.innerText = `REQUESTED BY: ${data.user}`;
+                firstLoad = false;
+                return;
             }
+
+            // 1. Slide OUT to the right
+            infoBox.classList.remove('visible');
+            infoBox.classList.add('hidden');
+
+            // 2. Wait for slide-out animation to finish (500ms)
+            setTimeout(() => {
+                // Change the text while it's invisible
+                titleEl.innerText = data.title;
+                userEl.innerText = `REQUESTED BY: ${data.user}`;
+
+                // 3. Slide back IN
+                infoBox.classList.remove('hidden');
+                infoBox.classList.add('visible');
+            }, 600); 
         });
     </script>
 </body>
