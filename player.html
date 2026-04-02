@@ -25,10 +25,33 @@
             display: flex;
             flex-direction: column;
             width: var(--widget-width);
-            gap: 10px; /* The padding between info and video */
+            gap: 10px;
+            position: relative;
         }
 
-        /* NOW PLAYING BLOCK (Above Video) */
+        /* CLICK TO UNLOCK OVERLAY */
+        #unlock-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,255,204,0.2);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px dashed var(--accent);
+            border-radius: 12px;
+            cursor: pointer;
+            backdrop-filter: blur(2px);
+        }
+        #unlock-layer span {
+            background: #000;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            color: var(--accent);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
         #info-card {
             background: var(--bg-dark);
             border-radius: 12px;
@@ -42,65 +65,16 @@
             overflow: hidden;
         }
 
-        #album-art {
-            width: 55px;
-            height: 55px;
-            border-radius: 8px;
-            object-fit: cover;
-            border: 1px solid #444;
-            flex-shrink: 0;
-        }
-
-        .text-container {
-            flex-grow: 1;
-            overflow: hidden;
-        }
-
-        #song-title {
-            font-size: 1.25rem;
-            font-weight: 800;
-            color: #fff;
-            display: block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 2px;
-        }
-
-        #requester {
-            font-size: 0.95rem;
-            color: #aaa;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        #user-name {
-            color: var(--accent);
-            font-weight: bold;
-        }
-
+        #album-art { width: 55px; height: 55px; border-radius: 8px; object-fit: cover; border: 1px solid #444; flex-shrink: 0; }
+        .text-container { flex-grow: 1; overflow: hidden; }
+        #song-title { font-size: 1.25rem; font-weight: 800; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+        #requester { font-size: 0.95rem; color: #aaa; display: flex; align-items: center; gap: 6px; }
+        #user-name { color: var(--accent); font-weight: bold; }
         .twitch-icon { color: #9146ff; }
 
-        /* PROGRESS BAR (Inside Info Card) */
-        #progress-wrap {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: rgba(255,255,255,0.1);
-        }
+        #progress-wrap { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: rgba(255,255,255,0.1); }
+        #progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s linear; box-shadow: 0 0 8px var(--accent); }
 
-        #progress-fill {
-            height: 100%;
-            background: var(--accent);
-            width: 0%;
-            transition: width 0.5s linear;
-            box-shadow: 0 0 8px var(--accent);
-        }
-
-        /* VIDEO CONTAINER */
         #video-frame {
             width: var(--widget-width);
             aspect-ratio: 16 / 9;
@@ -112,12 +86,8 @@
             position: relative;
         }
 
-        #player {
-            width: 100%;
-            height: 100%;
-        }
+        #player { width: 100%; height: 100%; }
 
-        /* PAUSE STATE INDICATOR */
         #pause-indicator {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -134,8 +104,12 @@
 <body>
 
     <div id="widget-stack">
+        <div id="unlock-layer" onclick="unlockPlayer()">
+            <span>⚠️ CLICK TO UNLOCK PLAYER (OBS INTERACT)</span>
+        </div>
+
         <div id="info-card">
-            <img id="album-art" src="https://i.ytimg.com/vi/placeholder/mqdefault.jpg">
+            <img id="album-art" src="">
             <div class="text-container">
                 <span id="song-title">Waiting for Request...</span>
                 <div id="requester">
@@ -143,16 +117,12 @@
                     Requested by <span id="user-name">Standby</span>
                 </div>
             </div>
-            <div id="progress-wrap">
-                <div id="progress-fill"></div>
-            </div>
+            <div id="progress-wrap"><div id="progress-fill"></div></div>
         </div>
 
         <div id="video-frame">
             <div id="player"></div>
-            <div id="pause-indicator">
-                <i class="fas fa-pause"></i>
-            </div>
+            <div id="pause-indicator"><i class="fas fa-pause"></i></div>
         </div>
     </div>
 
@@ -175,7 +145,8 @@
                     'controls': 0, 
                     'disablekb': 1,
                     'modestbranding': 1,
-                    'rel': 0
+                    'rel': 0,
+                    'mute': 1 // Start muted to help bypass autoplay blocks
                 },
                 events: { 
                     'onReady': onPlayerReady, 
@@ -184,11 +155,24 @@
             });
         }
 
+        // PHYSICAL UNLOCK FUNCTION
+        function unlockPlayer() {
+            if (player) {
+                player.unMute();
+                player.playVideo();
+                document.getElementById('unlock-layer').style.display = 'none';
+                console.log("Player Unlocked");
+            }
+        }
+
         function onPlayerReady(event) {
             database.ref('currentlyPlaying').on('value', snap => {
                 const data = snap.val();
                 if (data && data.id) {
                     player.loadVideoById(data.id);
+                    // If we haven't unlocked yet, keep trying to play
+                    player.playVideo(); 
+                    
                     document.getElementById('song-title').innerText = data.title;
                     document.getElementById('user-name').innerText = data.user;
                     document.getElementById('album-art').src = `https://i.ytimg.com/vi/${data.id}/mqdefault.jpg`;
@@ -223,6 +207,8 @@
             if (event.data == YT.PlayerState.PLAYING) {
                 state = "playing";
                 indicator.style.display = "none";
+                // Once it's playing, we know it's unlocked
+                document.getElementById('unlock-layer').style.display = 'none';
             } else {
                 indicator.style.display = "flex";
             }
