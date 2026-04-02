@@ -76,8 +76,8 @@
     <div id="main-content">
         <div class="dashboard-card">
             <div class="track-info">
-                <div id="active-title" class="active-title">Waiting for Track...</div>
-                <div id="active-user" class="active-user"><i class="fab fa-twitch twitch-icon"></i> Ready for Session</div>
+                <div id="active-title" class="active-title">Waiting...</div>
+                <div id="active-user" class="active-user"><i class="fab fa-twitch twitch-icon"></i> Standby</div>
             </div>
             <div class="split-controls">
                 <div class="thumb-box"><img id="active-thumb" src=""></div>
@@ -108,7 +108,7 @@
         const SECRET_CODE = "123456"; 
         let currentInput = "";
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
-        let database, lastAction = null;
+        let database, lastAction = null, currentSongState = null, currentPlayTime = 0;
 
         function pressNum(n) {
             if (n === 'C') currentInput = "";
@@ -125,6 +125,11 @@
         }
 
         if (localStorage.getItem('rig_access') === 'true') unlock();
+
+        function setUndo(action) {
+            lastAction = action;
+            document.getElementById('undo-btn').classList.add('active');
+        }
 
         function initApp() {
             firebase.initializeApp(firebaseConfig);
@@ -147,6 +152,7 @@
             database.ref('playbackTime').on('value', snap => {
                 const data = snap.val(); if (!data) return;
                 currentTotalTime = data.total;
+                currentPlayTime = data.current; // Track for undo
                 if (!document.getElementById('progress-bar').matches(':active')) {
                     document.getElementById('progress-bar').value = (data.current / data.total) * 100;
                 }
@@ -157,6 +163,7 @@
             database.ref('currentlyPlaying').on('value', snap => {
                 const data = snap.val();
                 if(data) {
+                    currentSongState = data; // Keep reference of current song
                     document.getElementById('active-title').innerText = data.title;
                     document.getElementById('active-user').innerHTML = `<i class="fab fa-twitch twitch-icon"></i> Request from: <span class="user-highlight">${data.user}</span>`;
                     document.getElementById('active-thumb').src = `https://i.ytimg.com/vi/${data.id}/mqdefault.jpg`;
@@ -169,7 +176,7 @@
                     const item = child.val();
                     const div = document.createElement('div');
                     div.className = 'queue-item'; div.setAttribute('data-key', child.key);
-                    div.innerHTML = `<div class="drag-handle"><i class="fas fa-grip-vertical"></i></div><div class="song-details"><span class="song-title">${item.title}</span><span class="song-user">by ${item.user}</span></div><button class="play-now" onclick="loadTrack('${child.key}', ${JSON.stringify(item).replace(/"/g, '&quot;')})">LOAD</button><button class="trash" onclick="deleteTrack('${child.key}')"><i class="fas fa-trash"></i></button>`;
+                    div.innerHTML = `<div class="drag-handle"><i class="fas fa-grip-vertical"></i></div><div class="song-details"><span class="song-title">${item.title}</span><span class="song-user">by ${item.user}</span></div><button class="play-now" onclick="loadTrack('${child.key}', ${JSON.stringify(item).replace(/"/g, '&quot;')})">LOAD</button><button class="trash" onclick="deleteTrack('${child.key}', ${JSON.stringify(item).replace(/"/g, '&quot;')})"><i class="fas fa-trash"></i></button>`;
                     list.appendChild(div);
                 });
             });
@@ -178,19 +185,32 @@
             window.sendControl = (a, v = null) => database.ref('controls').push({ action: a, value: v, ts: Date.now() });
             window.togglePlayback = () => sendControl(currentPlayerState === "playing" ? "pause" : "play");
             window.seekVideo = p => sendControl('seek', (p / 100) * currentTotalTime);
-            window.deleteTrack = k => database.ref('queue').child(k).remove();
-            window.loadTrack = (k, item) => { database.ref('currentlyPlaying').set({ ...item, ts: Date.now() }); database.ref('queue').child(k).remove(); };
-            window.skipToNext = () => { database.ref('queue').orderByChild('sortOrder').limitToFirst(1).once('value', s => s.forEach(c => loadTrack(c.key, c.val()))); };
+            
+            window.deleteTrack = (k, data) => {
+                setUndo({ type: 'delete', data: data });
+                database.ref('queue').child(k).remove();
+            };
+
+            window.loadTrack = (k, item) => {
+                // Save what was playing and where
+                setUndo({ type: 'swap', data: currentSongState, time: currentPlayTime });
+                database.ref('currentlyPlaying').set({ ...item, ts: Date.now() });
+                database.ref('queue').child(k).remove();
+            };
+
+            window.skipToNext = () => {
+                database.ref('queue').orderByChild('sortOrder').limitToFirst(1).once('value', s => {
+                    if (s.exists()) {
+                        s.forEach(c => loadTrack(c.key, c.val()));
+                    }
+                });
+            };
             
             window.clearQueue = function() {
                 const btn = document.getElementById('clear-btn');
                 if (btn.classList.contains('confirm')) {
                     database.ref('queue').once('value', snap => {
-                        const data = snap.val();
-                        if (data) {
-                            lastAction = { type: 'clear', fullData: data };
-                            document.getElementById('undo-btn').classList.add('active');
-                        }
+                        if (snap.exists()) setUndo({ type: 'clear', data: snap.val() });
                         database.ref('queue').remove();
                         btn.classList.remove('confirm'); btn.innerText = "Clear Everything";
                     });
@@ -201,9 +221,23 @@
             };
 
             window.handleUndo = () => { 
-                if(lastAction?.type === 'clear' && lastAction.fullData) {
-                    database.ref('queue').set(lastAction.fullData); 
+                if(!lastAction) return;
+
+                if(lastAction.type === 'clear') {
+                    database.ref('queue').set(lastAction.data);
+                } 
+                else if(lastAction.type === 'delete') {
+                    database.ref('queue').push(lastAction.data);
+                } 
+                else if(lastAction.type === 'swap') {
+                    // Put current song back to queue top (if exists)
+                    if(currentSongState) database.ref('queue').push({...currentSongState, sortOrder: -1});
+                    // Restore previous song
+                    database.ref('currentlyPlaying').set(lastAction.data);
+                    // Seek to previous time
+                    setTimeout(() => sendControl('seek', lastAction.time), 500);
                 }
+
                 lastAction = null; 
                 document.getElementById('undo-btn').classList.remove('active'); 
             };
