@@ -49,32 +49,10 @@
         .time-labels { display: flex; justify-content: space-between; font-family: monospace; color: #888; font-size: 1.1rem; margin-bottom: 8px; }
         #progress-bar { width: 100%; height: 35px; accent-color: var(--accent); cursor: pointer; }
 
-        /* QUEUE LIST - ENHANCED VISIBILITY */
-        .queue-item { 
-            background: #1c1c1c; 
-            padding: 12px; 
-            margin: 12px 0; 
-            border-radius: 12px; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            border: 1px solid #3a3a3a; /* More defined border */
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); /* Add depth */
-        }
+        /* QUEUE LIST */
+        .queue-item { background: #1c1c1c; padding: 12px; margin: 12px 0; border-radius: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid #3a3a3a; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         
-        .drag-handle { 
-            width: 50px; 
-            height: 60px; 
-            background: #262626; 
-            border-radius: 8px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            color: #666; 
-            font-size: 1.8rem; 
-            cursor: grab;
-            border: 1px solid #444;
-        }
+        .drag-handle { width: 50px; height: 60px; background: #262626; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.8rem; cursor: grab; border: 1px solid #444; }
         .drag-handle:active { cursor: grabbing; color: var(--accent); background: #333; }
 
         .song-details { flex-grow: 1; overflow: hidden; }
@@ -137,7 +115,7 @@
         const SECRET_CODE = "123456"; 
         let currentInput = "";
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
-        let database, lastAction = null, currentSongState = null, currentPlayTime = 0;
+        let database, lastAction = null, currentSongState = null, currentPlayTime = 0, currentPlayerState = "paused";
 
         function pressNum(n) {
             if (n === 'C') currentInput = "";
@@ -163,7 +141,7 @@
         function initApp() {
             firebase.initializeApp(firebaseConfig);
             database = firebase.database();
-            let currentPlayerState = "paused", currentTotalTime = 0;
+            let currentTotalTime = 0;
 
             Sortable.create(document.getElementById('queue-list'), {
                 animation: 200,
@@ -238,7 +216,19 @@
 
             window.skipToNext = () => {
                 database.ref('queue').orderByChild('sortOrder').limitToFirst(1).once('value', s => {
-                    if (s.exists()) s.forEach(c => loadTrack(c.key, c.val()));
+                    if (s.exists()) {
+                        s.forEach(c => {
+                            const item = c.val();
+                            loadTrack(c.key, item);
+                            // If paused, ensure the new song loads in a paused state at 0
+                            if (currentPlayerState === "paused") {
+                                setTimeout(() => {
+                                    sendControl('pause');
+                                    sendControl('seek', 0);
+                                }, 300);
+                            }
+                        });
+                    }
                 });
             };
             
