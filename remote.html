@@ -25,7 +25,7 @@
         #main-content { display: none; max-width: 900px; margin: 0 auto; padding-bottom: 50px; }
 
         /* DASHBOARD */
-        .dashboard-card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 25px; border: 1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .dashboard-card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 25px; border: 2px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .track-info { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; text-align: center; }
         .active-title { font-size: 1.6rem; font-weight: 900; color: #fff; margin: 0; }
 
@@ -44,9 +44,9 @@
         .time-labels { display: flex; justify-content: space-between; font-family: monospace; color: #888; font-size: 1rem; margin-bottom: 8px; }
         #progress-bar { width: 100%; height: 45px; accent-color: var(--accent); cursor: pointer; }
 
-        /* QUEUE LIST - FIXING BORDERS AND HANDLES */
-        .queue-item { background: #111; padding: 15px; margin: 12px 0; border-radius: 12px; display: flex; align-items: center; gap: 15px; border: 2px solid #444; }
-        .drag-handle { width: 60px; height: 60px; background: #222; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 1.8rem; cursor: grab; }
+        /* QUEUE LIST */
+        .queue-item { background: #111; padding: 15px; margin: 12px 0; border-radius: 12px; display: flex; align-items: center; gap: 15px; border: 2px solid #555; }
+        .drag-handle { width: 65px; height: 65px; background: #222; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 2rem; cursor: grab; }
         .song-details { flex-grow: 1; overflow: hidden; }
         .song-title { font-weight: bold; font-size: 1.2rem; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .song-user { font-size: 0.9rem; color: #aaa; }
@@ -77,7 +77,7 @@
         <div class="dashboard-card">
             <div class="track-info">
                 <div id="active-title" class="active-title">Waiting...</div>
-                <div id="active-user" style="color:#aaa; margin-top:5px;">Ready for request</div>
+                <div id="active-user" style="color:#aaa; margin-top:5px;">System Standby</div>
             </div>
             <div class="split-controls">
                 <div class="thumb-box"><img id="active-thumb" src=""></div>
@@ -105,7 +105,7 @@
     </div>
 
     <script>
-        const SECRET_CODE = "123456"; 
+        const SECRET_CODE = "596021"; 
         let currentInput = "";
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
         let database, lastAction, currentSongState, currentPlayTime, currentPlayerState = "paused", clearConfirmTimer;
@@ -182,18 +182,17 @@
             window.togglePlayback = () => sendControl(currentPlayerState === "playing" ? "pause" : "play");
             window.seekVideo = p => sendControl('seek', (p / 100) * totalT);
 
-            // FIX: LOAD TRACK NOW STARTS IN PAUSED STATE
             window.loadTrack = (k, item) => {
                 lastAction = { type: 'swap', data: currentSongState, time: currentPlayTime };
                 document.getElementById('undo-btn').classList.add('active');
                 database.ref('currentlyPlaying').set({ ...item, ts: Date.now() });
                 database.ref('queue').child(k).remove();
                 
-                // Ensure new track is paused at the start
+                // Track stays paused on load
                 setTimeout(() => {
                     sendControl('pause');
                     sendControl('seek', 0);
-                }, 300);
+                }, 350);
             };
 
             window.deleteTrack = (k, item) => {
@@ -202,7 +201,6 @@
                 database.ref('queue').child(k).remove();
             };
 
-            // FIX: SKIP NOW WORKS WITH TIMESTAMP LOGIC
             window.skipToNext = () => {
                 database.ref('queue').orderByChild('addedAt').limitToFirst(1).once('value', s => {
                     if (s.exists()) {
