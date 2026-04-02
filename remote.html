@@ -9,9 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         :root { --accent: #00ffcc; --card-bg: #1a1a1a; --undo-color: #ffcc00; --twitch: #9146ff; --danger: #ff4444; }
-        
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
-
         body { background: #0a0a0a; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px; margin: 0; }
 
         /* AUTH SCREEN */
@@ -19,30 +17,30 @@
         .pin-display { font-size: 3.5rem; letter-spacing: 15px; color: var(--accent); margin-bottom: 30px; height: 60px; font-family: monospace; }
         .numpad { display: grid; grid-template-columns: repeat(3, 90px); gap: 20px; }
         .num-btn { width: 90px; height: 90px; border-radius: 50%; border: 2px solid #222; background: #111; color: white; font-size: 2.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .num-btn span, .num-btn i { pointer-events: none; }
         .num-btn:active { background: var(--accent); color: black; transform: scale(0.95); }
 
         #main-content { display: none; max-width: 900px; margin: 0 auto; }
 
         /* DASHBOARD */
-        .dashboard-card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .track-info { margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; text-align: center; } /* Centered */
+        .dashboard-card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; }
+        .track-info { margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; text-align: center; }
         .active-title { font-size: 1.8rem; font-weight: 900; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .active-user { color: #aaa; font-weight: bold; font-size: 1.1rem; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .twitch-icon { color: var(--twitch); }
         .user-highlight { color: var(--accent); }
 
         .split-controls { display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; }
-        .thumb-box { flex: 1.2; border-radius: 12px; overflow: hidden; border: 2px solid #333; background: #000; display: flex; align-items: center; justify-content: center; min-height: 180px; }
+        .thumb-box { flex: 1.2; border-radius: 12px; overflow: hidden; border: 2px solid #333; background: #000; min-height: 180px; }
         #active-thumb { width: 100%; height: 100%; object-fit: cover; }
 
         .btn-stack { flex: 1; display: flex; flex-direction: column; gap: 12px; }
         .main-trigger { flex: 2; background: var(--accent); color: black; border: none; border-radius: 12px; font-size: 3.5rem; display: flex; align-items: center; justify-content: center; }
         .secondary-actions { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         .btn-action { background: #333; color: white; border: none; border-radius: 10px; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; }
-        .btn-action.skip { background: #444; font-size: 2rem; }
-        .btn-action.undo { opacity: 0.3; pointer-events: none; transition: 0.2s; }
-        .btn-action.undo.active { opacity: 1; pointer-events: auto; background: #443300; color: var(--undo-color); border: 1px solid var(--undo-color); }
+        
+        /* UNDO STATE */
+        .btn-action.undo { color: #444; pointer-events: none; transition: all 0.3s ease; }
+        .btn-action.undo.active { color: var(--undo-color); background: #332b00; border: 1px solid var(--undo-color); pointer-events: auto; }
 
         .progress-area { width: 100%; }
         .time-labels { display: flex; justify-content: space-between; font-family: monospace; color: #888; font-size: 1.1rem; margin-bottom: 8px; }
@@ -58,7 +56,7 @@
         .trash { color: var(--danger); font-size: 1.6rem; border: none; background: none; }
 
         .footer-tools { margin-top: 30px; display: flex; flex-direction: column; gap: 10px; }
-        .btn-debug { background: #1a1a1a; color: #555; border: 1px dashed #333; padding: 10px; border-radius: 8px; font-size: 0.8rem; text-transform: uppercase; }
+        .btn-debug { background: #1a1a1a; color: #555; border: 1px dashed #333; padding: 12px; border-radius: 8px; font-size: 0.9rem; text-transform: uppercase; }
         .btn-danger-wide { width: 100%; padding: 25px; background: #201010; color: var(--danger); border: 1px solid var(--danger); border-radius: 12px; font-weight: bold; text-transform: uppercase; font-size: 1.2rem; }
         .btn-danger-wide.confirm { background: var(--danger); color: black; }
     </style>
@@ -68,18 +66,10 @@
     <div id="lock-screen">
         <div id="pin-dots" class="pin-display"></div>
         <div class="numpad">
-            <div class="num-btn" onclick="pressNum('1')"><span>1</span></div>
-            <div class="num-btn" onclick="pressNum('2')"><span>2</span></div>
-            <div class="num-btn" onclick="pressNum('3')"><span>3</span></div>
-            <div class="num-btn" onclick="pressNum('4')"><span>4</span></div>
-            <div class="num-btn" onclick="pressNum('5')"><span>5</span></div>
-            <div class="num-btn" onclick="pressNum('6')"><span>6</span></div>
-            <div class="num-btn" onclick="pressNum('7')"><span>7</span></div>
-            <div class="num-btn" onclick="pressNum('8')"><span>8</span></div>
-            <div class="num-btn" onclick="pressNum('9')"><span>9</span></div>
-            <div class="num-btn" onclick="pressNum('C')" style="color:var(--danger)"><span>C</span></div>
-            <div class="num-btn" onclick="pressNum('0')"><span>0</span></div>
-            <div class="num-btn" onclick="pressNum('D')"><i class="fas fa-backspace"></i></div>
+            <div class="num-btn" onclick="pressNum('1')">1</div><div class="num-btn" onclick="pressNum('2')">2</div><div class="num-btn" onclick="pressNum('3')">3</div>
+            <div class="num-btn" onclick="pressNum('4')">4</div><div class="num-btn" onclick="pressNum('5')">5</div><div class="num-btn" onclick="pressNum('6')">6</div>
+            <div class="num-btn" onclick="pressNum('7')">7</div><div class="num-btn" onclick="pressNum('8')">8</div><div class="num-btn" onclick="pressNum('9')">9</div>
+            <div class="num-btn" onclick="pressNum('C')" style="color:var(--danger)">C</div><div class="num-btn" onclick="pressNum('0')">0</div><div class="num-btn" onclick="pressNum('D')"><i class="fas fa-backspace"></i></div>
         </div>
     </div>
 
@@ -87,9 +77,7 @@
         <div class="dashboard-card">
             <div class="track-info">
                 <div id="active-title" class="active-title">Waiting for Track...</div>
-                <div id="active-user" class="active-user">
-                    <i class="fab fa-twitch twitch-icon"></i> Ready for Session
-                </div>
+                <div id="active-user" class="active-user"><i class="fab fa-twitch twitch-icon"></i> Ready for Session</div>
             </div>
             <div class="split-controls">
                 <div class="thumb-box"><img id="active-thumb" src=""></div>
@@ -198,8 +186,11 @@
                 const btn = document.getElementById('clear-btn');
                 if (btn.classList.contains('confirm')) {
                     database.ref('queue').once('value', snap => {
-                        lastAction = { type: 'clear', fullData: snap.val() };
-                        document.getElementById('undo-btn').classList.add('active');
+                        const data = snap.val();
+                        if (data) {
+                            lastAction = { type: 'clear', fullData: data };
+                            document.getElementById('undo-btn').classList.add('active');
+                        }
                         database.ref('queue').remove();
                         btn.classList.remove('confirm'); btn.innerText = "Clear Everything";
                     });
