@@ -1,97 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Drum Stream Overlay</title>
+    <title>Drum Stream Overlay - Hands Free</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         :root { --accent: #00ffcc; }
-        
-        body { 
-            margin: 0; 
-            padding: 20px; /* Space for the label sitting on top */
-            background: transparent; 
-            overflow: hidden; 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        /* OUTER WRAPPER */
-        #stage-wrapper {
-            display: inline-block;
-            position: relative;
-        }
-
-        /* LABEL SITTING ON TOP OF VIDEO */
-        #request-label {
-            margin-bottom: 4px;
-            pointer-events: none;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .song-title {
-            color: #ffffff;
-            font-size: 22px;
-            font-weight: 900;
-            display: block;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-
-        .requested-by {
-            color: var(--accent);
-            font-size: 14px;
-            font-weight: 700;
-            display: block;
-            margin-bottom: 2px;
-        }
-
-        /* VIDEO CONTAINER */
-        #video-container {
-            position: relative;
-            width: 640px; 
-            height: 360px;
-            background: #000;
-            border-radius: 4px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            border: 1px solid #333;
-        }
-
-        #player { width: 100%; height: 100%; }
-
-        /* INTEGRATED PROGRESS BAR (At the very bottom of video) */
-        #progress-container {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: rgba(0,0,0,0.5);
-            z-index: 11;
-        }
-
-        #progress-fill {
-            height: 100%;
-            width: 0%;
-            background: var(--accent);
-            box-shadow: 0 0 10px var(--accent);
-            transition: width 0.5s linear;
-        }
+        body { margin: 0; padding: 25px; background: transparent; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+        #stage-wrapper { display: inline-block; position: relative; }
+        #request-label { margin-bottom: 6px; pointer-events: none; text-transform: uppercase; }
+        .song-title { color: #ffffff; font-size: 24px; font-weight: 900; display: block; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        .requested-by { color: var(--accent); font-size: 14px; font-weight: 700; display: block; margin-bottom: 2px; }
+        #video-container { position: relative; width: 640px; height: 360px; background: #000; border-radius: 4px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 1px solid #333; }
+        #player { width: 100%; height: 100%; pointer-events: none; } /* Prevents accidental clicks */
+        #progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: rgba(0,0,0,0.5); z-index: 11; }
+        #progress-fill { height: 100%; width: 0%; background: var(--accent); box-shadow: 0 0 10px var(--accent); transition: width 0.5s linear; }
     </style>
 </head>
 <body>
-
     <div id="stage-wrapper">
         <div id="request-label">
             <span id="display-user" class="requested-by">WAITING FOR REQUESTS</span>
             <span id="display-title" class="song-title">STARTING SOON</span>
         </div>
-        
         <div id="video-container">
             <div id="player"></div>
-            <div id="progress-container">
-                <div id="progress-fill"></div>
-            </div>
+            <div id="progress-container"><div id="progress-fill"></div></div>
         </div>
     </div>
 
@@ -107,16 +41,15 @@
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
-                height: '360',
-                width: '640',
-                videoId: '',
+                height: '360', width: '640', videoId: '',
                 playerVars: { 
-                    'autoplay': 0, 
+                    'autoplay': 1,       // Force Start
+                    'mute': 1,           // MANDATORY: Browsers only allow autoplay if muted
                     'controls': 0, 
                     'modestbranding': 1, 
                     'rel': 0, 
                     'disablekb': 1,
-                    'iv_load_policy': 3
+                    'origin': window.location.origin
                 },
                 events: {
                     'onReady': onPlayerReady,
@@ -131,14 +64,18 @@
                 if (data) {
                     document.getElementById('display-title').innerText = data.title;
                     document.getElementById('display-user').innerText = `REQUESTED BY: ${data.user}`;
-                    player.loadVideoById(data.id);
+                    player.loadVideoById({
+                        videoId: data.id,
+                        suggestedQuality: 'hd720'
+                    });
+                    // We must tell it to play after loading
+                    player.playVideo(); 
                 }
             });
 
             database.ref('controls').on('child_added', snapshot => {
                 const data = snapshot.val();
                 if (!data || !player) return;
-
                 switch(data.action) {
                     case 'play': player.playVideo(); break;
                     case 'pause': player.pauseVideo(); break;
@@ -155,10 +92,8 @@
                 if (player && player.getCurrentTime && player.getDuration) {
                     const current = player.getCurrentTime();
                     const total = player.getDuration();
-                    
                     database.ref('playbackTime').set({ current, total });
-                    
-                    const percent = (current / total) * 100;
+                    const percent = (total > 0) ? (current / total) * 100 : 0;
                     document.getElementById('progress-fill').style.width = percent + "%";
                 }
             }, 1000);
