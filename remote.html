@@ -61,9 +61,8 @@
         .trash { color: var(--danger); font-size: 1.4rem; border: none; background: none; }
 
         .footer-tools { margin-top: 30px; display: flex; flex-direction: column; gap: 10px; }
-        .btn-debug { background: #1a1a1a; color: #555; border: 1px dashed #333; padding: 15px; border-radius: 8px; font-size: 0.8rem; }
+        .btn-debug { background: #1a1a1a; color: #00ffcc; border: 1px solid #00ffcc; padding: 15px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
         .btn-danger-wide { width: 100%; padding: 20px; background: #201010; color: var(--danger); border: 1px solid var(--danger); border-radius: 12px; font-weight: bold; }
-        .btn-danger-wide.confirm { background: var(--danger); color: black; }
     </style>
 </head>
 <body>
@@ -104,8 +103,8 @@
         <div id="queue-list"></div>
         
         <div class="footer-tools">
-            <button class="btn-debug" onclick="populateQueue()">Load Sample Playlist</button>
-            <button id="clear-btn" class="btn-danger-wide" onclick="clearQueue()">Clear Everything</button>
+            <button class="btn-debug" onclick="populateQueue()">LOAD NEW SAMPLE PLAYLIST</button>
+            <button id="clear-btn" class="btn-danger-wide" onclick="clearQueue()">CLEAR ALL QUEUE</button>
         </div>
     </div>
 
@@ -115,35 +114,22 @@
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
         let database, lastAction = null, currentSongState = null, currentPlayTime = 0, currentPlayerState = "paused";
 
-        // OVERHAULED PIN LOGIC
         function pressNum(n) {
             const display = document.getElementById('pin-dots');
-            
-            if (n === 'C') {
-                currentInput = "";
-            } else if (n === 'D') {
-                currentInput = currentInput.slice(0, -1);
-            } else {
-                if (currentInput.length < 6) currentInput += n;
-            }
+            if (n === 'C') { currentInput = ""; } 
+            else if (n === 'D') { currentInput = currentInput.slice(0, -1); } 
+            else { if (currentInput.length < 6) currentInput += n; }
 
-            // Visual dots update
             display.innerText = "•".repeat(currentInput.length);
 
-            // Check for match
             if (currentInput === SECRET_CODE) {
                 display.classList.add('access-granted');
                 display.innerText = "ACCESS GRANTED";
                 localStorage.setItem('rig_access', 'true');
                 setTimeout(unlock, 600);
             } else if (currentInput.length >= 6) {
-                // Wrong code feedback
                 display.style.color = 'red';
-                setTimeout(() => {
-                    display.style.color = '';
-                    currentInput = "";
-                    display.innerText = "";
-                }, 500);
+                setTimeout(() => { display.style.color = ''; currentInput = ""; display.innerText = ""; }, 500);
             }
         }
 
@@ -153,13 +139,10 @@
             initApp();
         }
 
-        if (localStorage.getItem('rig_access') === 'true') {
-            // Tiny delay to ensure DOM is ready
-            setTimeout(unlock, 100);
-        }
+        if (localStorage.getItem('rig_access') === 'true') { setTimeout(unlock, 100); }
 
         function initApp() {
-            if (database) return; // Prevent double init
+            if (database) return;
             firebase.initializeApp(firebaseConfig);
             database = firebase.database();
             let currentTotalTime = 0;
@@ -237,14 +220,29 @@
             window.skipToNext = () => {
                 database.ref('queue').orderByChild('sortOrder').limitToFirst(1).once('value', s => {
                     if (s.exists()) {
-                        s.forEach(c => {
-                            const item = c.val();
-                            loadTrack(c.key, item);
-                            if (currentPlayerState === "paused") {
-                                setTimeout(() => { sendControl('pause'); sendControl('seek', 0); }, 300);
-                            }
-                        });
+                        s.forEach(c => { loadTrack(c.key, c.val()); });
                     }
+                });
+            };
+
+            window.clearQueue = () => {
+                if(confirm("Wipe all requests?")) database.ref('queue').remove();
+            };
+
+            // UPDATED SAMPLE PLAYLIST LOGIC
+            window.populateQueue = () => {
+                const samples = [
+                    { id: "BE9CXWV1alg", title: "Limp Bizkit - My Generation", user: "Sample" },
+                    { id: "eVTXPUF4Oz4", title: "Linkin Park - In The End", user: "Sample" },
+                    { id: "9d4ui9q7eDM", title: "Megadeth - Holy Wars", user: "Sample" },
+                    { id: "8Ik9qECIWgc", title: "Dream Theater - Dance of Eternity", user: "Sample" },
+                    { id: "2ti7MRMy8BA", title: "Turtles in Time - Shell-Shock", user: "Sample" },
+                    { id: "TAqZb52sgpU", title: "Alice In Chains - Man in the Box", user: "Sample" },
+                    { id: "jdWhJcrrjQs", title: "Architects - Animals", user: "Sample" },
+                    { id: "BiP0FpY88E4", title: "Electric Callboy - Elevator Operator", user: "Sample" }
+                ];
+                samples.forEach((s, i) => {
+                    database.ref('queue').push({ ...s, sortOrder: i });
                 });
             };
 
