@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Drum Request - OBS Overlay</title>
+    <title>Drum Request - Stage Pro Overlay</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -29,29 +29,36 @@
             position: relative;
         }
 
-        /* CLICK TO UNLOCK OVERLAY */
-        #unlock-layer {
+        /* ARCADE OVERLAY - Standard Click Trigger */
+        #boot-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,255,204,0.2);
-            z-index: 100;
+            background: #000;
+            z-index: 999;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            border: 3px dashed var(--accent);
             border-radius: 12px;
+            border: 2px solid var(--accent);
             cursor: pointer;
-            backdrop-filter: blur(2px);
-        }
-        #unlock-layer span {
-            background: #000;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            color: var(--accent);
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            transition: opacity 0.5s ease;
         }
 
+        .boot-prompt {
+            font-family: 'Courier New', monospace;
+            color: var(--accent);
+            font-size: 2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            animation: pulse 1.5s infinite;
+            text-shadow: 0 0 15px var(--accent);
+        }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        /* INFO CARD */
         #info-card {
             background: var(--bg-dark);
             border-radius: 12px;
@@ -62,7 +69,7 @@
             position: relative;
             border: 1px solid #333;
             box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-            overflow: hidden;
+            z-index: 10;
         }
 
         #album-art { width: 55px; height: 55px; border-radius: 8px; object-fit: cover; border: 1px solid #444; flex-shrink: 0; }
@@ -73,8 +80,9 @@
         .twitch-icon { color: #9146ff; }
 
         #progress-wrap { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: rgba(255,255,255,0.1); }
-        #progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s linear; box-shadow: 0 0 8px var(--accent); }
+        #progress-fill { height: 100%; background: var(--accent); width: 0%; box-shadow: 0 0 8px var(--accent); }
 
+        /* VIDEO AREA */
         #video-frame {
             width: var(--widget-width);
             aspect-ratio: 16 / 9;
@@ -104,17 +112,18 @@
 <body>
 
     <div id="widget-stack">
-        <div id="unlock-layer" onclick="unlockPlayer()">
-            <span>⚠️ CLICK TO UNLOCK PLAYER (OBS INTERACT)</span>
+        <div id="boot-screen" onclick="initializeSystem()">
+            <div class="boot-prompt">PRESS START</div>
+            <div style="color: #444; margin-top: 15px; font-size: 0.7rem; letter-spacing: 2px;">DRUM REQUEST v2.0</div>
         </div>
 
         <div id="info-card">
             <img id="album-art" src="">
             <div class="text-container">
-                <span id="song-title">Waiting for Request...</span>
+                <span id="song-title">System Ready</span>
                 <div id="requester">
                     <i class="fab fa-twitch twitch-icon"></i> 
-                    Requested by <span id="user-name">Standby</span>
+                    Requested by <span id="user-name">...</span>
                 </div>
             </div>
             <div id="progress-wrap"><div id="progress-fill"></div></div>
@@ -132,6 +141,8 @@
         const database = firebase.database();
 
         let player;
+        let systemArmed = false;
+
         const tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         document.getElementsByTagName('head')[0].appendChild(tag);
@@ -143,51 +154,55 @@
                 playerVars: { 
                     'autoplay': 1, 
                     'controls': 0, 
-                    'disablekb': 1,
-                    'modestbranding': 1,
-                    'rel': 0,
-                    'mute': 1 // Start muted to help bypass autoplay blocks
+                    'disablekb': 1, 
+                    'modestbranding': 1, 
+                    'rel': 0 
                 },
                 events: { 
-                    'onReady': onPlayerReady, 
+                    'onReady': () => console.log("YT Engine Ready"), 
                     'onStateChange': onPlayerStateChange 
                 }
             });
         }
 
-        // PHYSICAL UNLOCK FUNCTION
-        function unlockPlayer() {
-            if (player) {
-                player.unMute();
-                player.playVideo();
-                document.getElementById('unlock-layer').style.display = 'none';
-                console.log("Player Unlocked");
-            }
+        // TRIGGERED BY THE ARCADE BUTTON
+        function initializeSystem() {
+            if (systemArmed) return;
+            
+            // This satisfies the browser's "user gesture" requirement
+            player.playVideo(); 
+            
+            document.getElementById('boot-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('boot-screen').style.display = 'none';
+                systemArmed = true;
+                startDatabaseSync();
+            }, 500);
         }
 
-        function onPlayerReady(event) {
+        function startDatabaseSync() {
+            // Track Song Changes
             database.ref('currentlyPlaying').on('value', snap => {
                 const data = snap.val();
                 if (data && data.id) {
                     player.loadVideoById(data.id);
-                    // If we haven't unlocked yet, keep trying to play
-                    player.playVideo(); 
-                    
                     document.getElementById('song-title').innerText = data.title;
                     document.getElementById('user-name').innerText = data.user;
                     document.getElementById('album-art').src = `https://i.ytimg.com/vi/${data.id}/mqdefault.jpg`;
                 }
             });
 
+            // Track Remote Controls
             database.ref('controls').limitToLast(1).on('child_added', snap => {
                 const cmd = snap.val();
                 if (!cmd || Date.now() - cmd.ts > 5000) return;
+                
                 if (cmd.action === 'play') player.playVideo();
                 if (cmd.action === 'pause') player.pauseVideo();
                 if (cmd.action === 'seek') player.seekTo(cmd.value);
-                if (cmd.action === 'mute') player.isMuted() ? player.unMute() : player.mute();
             });
 
+            // Heartbeat for Time/Progress
             setInterval(() => {
                 if (player && player.getCurrentTime) {
                     const current = player.getCurrentTime();
@@ -203,12 +218,9 @@
         function onPlayerStateChange(event) {
             let state = "paused";
             const indicator = document.getElementById('pause-indicator');
-            
             if (event.data == YT.PlayerState.PLAYING) {
                 state = "playing";
                 indicator.style.display = "none";
-                // Once it's playing, we know it's unlocked
-                document.getElementById('unlock-layer').style.display = 'none';
             } else {
                 indicator.style.display = "flex";
             }
