@@ -8,28 +8,31 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background: #0a0a0a; color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; }
+        
         #lock-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index: 9999; display:flex; flex-direction:column; align-items:center; justify-content:center; }
         .pin-display { font-size: 3rem; letter-spacing: 15px; color: #00ffcc; margin-bottom: 30px; height: 60px; }
         .numpad { display: grid; grid-template-columns: repeat(3, 80px); gap: 20px; }
-        .num-btn { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #333; background: #111; color: white; font-size: 1.8rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .num-btn:active { background: #00ffcc; color: black; }
+        .num-btn { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #333; background: #111; color: white; font-size: 1.8rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.1s; }
+        .num-btn:active, .num-btn.active { background: #00ffcc; color: black; transform: scale(0.9); }
+
         #interaction-overlay { display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, #1a1a1a 0%, #050505 100%); z-index: 1000; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
         .ready-text { font-size: 3.5rem; font-weight: 800; letter-spacing: 8px; color: #ffffff; text-transform: uppercase; }
         .pulse-text { font-size: 1.2rem; color: #00ffcc; letter-spacing: 4px; text-transform: uppercase; animation: pulse-glow 2s infinite; }
         @keyframes pulse-glow { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
         #status { font-size: 24px; color: #00ffcc; margin: 40px 0 20px; text-transform: uppercase; letter-spacing: 2px; }
         #player-container { border: 5px solid #222; display: inline-block; border-radius: 12px; overflow: hidden; }
     </style>
 </head>
 <body>
     <div id="lock-screen">
-        <div style="color: #444; margin-bottom: 10px; text-transform: uppercase;">System Locked</div>
+        <div style="color: #444; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px;">Enter Access Key</div>
         <div id="pin-dots" class="pin-display"></div>
         <div class="numpad">
-            <div class="num-btn" onclick="pressNum('1')">1</div><div class="num-btn" onclick="pressNum('2')">2</div><div class="num-btn" onclick="pressNum('3')">3</div>
-            <div class="num-btn" onclick="pressNum('4')">4</div><div class="num-btn" onclick="pressNum('5')">5</div><div class="num-btn" onclick="pressNum('6')">6</div>
-            <div class="num-btn" onclick="pressNum('7')">7</div><div class="num-btn" onclick="pressNum('8')">8</div><div class="num-btn" onclick="pressNum('9')">9</div>
-            <div class="num-btn" onclick="pressNum('C')" style="color:#ff4444">C</div><div class="num-btn" onclick="pressNum('0')">0</div><div class="num-btn" onclick="pressNum('D')"><i class="fas fa-backspace"></i></div>
+            <div class="num-btn" id="btn-1" onclick="pressNum('1')">1</div><div class="num-btn" id="btn-2" onclick="pressNum('2')">2</div><div class="num-btn" id="btn-3" onclick="pressNum('3')">3</div>
+            <div class="num-btn" id="btn-4" onclick="pressNum('4')">4</div><div class="num-btn" id="btn-5" onclick="pressNum('5')">5</div><div class="num-btn" id="btn-6" onclick="pressNum('6')">6</div>
+            <div class="num-btn" id="btn-7" onclick="pressNum('7')">7</div><div class="num-btn" id="btn-8" onclick="pressNum('8')">8</div><div class="num-btn" id="btn-9" onclick="pressNum('9')">9</div>
+            <div class="num-btn clear" id="btn-C" onclick="pressNum('C')" style="color:#ff4444">C</div><div class="num-btn" id="btn-0" onclick="pressNum('0')">0</div><div class="num-btn" id="btn-D" onclick="pressNum('D')"><i class="fas fa-backspace"></i></div>
         </div>
     </div>
 
@@ -42,17 +45,48 @@
     <div id="player-container"><div id="player"></div></div>
 
     <script>
+        const USE_LOCK = true; // SET TO FALSE TO REMOVE PIN SCREEN
         const SECRET_CODE = "123456"; 
+        
         let currentInput = "";
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
         var player, database, timeUpdater;
+
+        // KEYBOARD LISTENER
+        window.addEventListener('keydown', (e) => {
+            if (document.getElementById('lock-screen').style.display === 'none') return;
+            
+            if (e.key >= '0' && e.key <= '9') {
+                pressNum(e.key);
+                visualFeedback(e.key);
+            } else if (e.key === 'Backspace') {
+                pressNum('D');
+                visualFeedback('D');
+            } else if (e.key === 'Escape') {
+                pressNum('C');
+                visualFeedback('C');
+            }
+        });
+
+        function visualFeedback(id) {
+            const btn = document.getElementById('btn-' + id);
+            if (btn) {
+                btn.classList.add('active');
+                setTimeout(() => btn.classList.remove('active'), 100);
+            }
+        }
 
         function pressNum(n) {
             if (n === 'C') currentInput = "";
             else if (n === 'D') currentInput = currentInput.slice(0, -1);
             else if (currentInput.length < 6) currentInput += n;
+            
             document.getElementById('pin-dots').innerText = "•".repeat(currentInput.length);
-            if (currentInput === SECRET_CODE) { localStorage.setItem('rig_access', 'true'); unlock(); }
+            
+            if (currentInput === SECRET_CODE) {
+                localStorage.setItem('rig_access', 'true');
+                unlock();
+            }
         }
 
         function unlock() {
@@ -61,7 +95,10 @@
             connectFirebase();
         }
 
-        // Initialize YT API immediately, regardless of lock
+        if (!USE_LOCK || localStorage.getItem('rig_access') === 'true') {
+            setTimeout(unlock, 100);
+        }
+
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', { 
                 height: '360', width: '640', videoId: '', 
@@ -72,7 +109,6 @@
 
         function onPlayerReady() {
             console.log("YouTube Player Ready");
-            if (localStorage.getItem('rig_access') === 'true') unlock();
         }
 
         function enableAudio() {
@@ -84,12 +120,11 @@
         }
 
         function connectFirebase() {
-            if (database) return; // Prevent double init
+            if (database) return; 
             firebase.initializeApp(firebaseConfig);
             database = firebase.database();
             document.getElementById('status').innerText = "SYSTEM LIVE";
 
-            // Listen for current song
             database.ref('currentlyPlaying').on('value', snap => {
                 const song = snap.val();
                 if (song && player?.cueVideoById) {
@@ -98,7 +133,6 @@
                 }
             });
 
-            // Listen for controls
             database.ref('controls').on('child_added', snap => {
                 const cmd = snap.val(); 
                 if (!cmd || !player) return;
