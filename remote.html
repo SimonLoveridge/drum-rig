@@ -10,10 +10,9 @@
     <style>
         :root { --accent: #00ffcc; --card-bg: #1a1a1a; --undo-color: #ffcc00; --twitch: #9146ff; --danger: #ff4444; }
         
-        /* PREVENT SYSTEM INTERFERENCE & SELECTION */
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
         
-        body { background: #0a0a0a; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px; margin: 0; overflow-x: hidden; }
+        body { background: #0a0a0a; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px; margin: 0; }
 
         /* AUTH SCREEN */
         #lock-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; }
@@ -38,7 +37,6 @@
 
         .btn-stack { flex: 1; display: flex; flex-direction: column; gap: 12px; }
         .main-trigger { flex: 2; background: var(--accent); color: black; border: none; border-radius: 12px; font-size: 3.5rem; display: flex; align-items: center; justify-content: center; }
-        .main-trigger:active { transform: scale(0.98); }
         
         .secondary-actions { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         .btn-action { background: #333; color: white; border: none; border-radius: 10px; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; }
@@ -51,17 +49,31 @@
         .time-labels { display: flex; justify-content: space-between; font-family: monospace; color: #888; font-size: 1.1rem; margin-bottom: 8px; }
         #progress-bar { width: 100%; height: 35px; accent-color: var(--accent); cursor: pointer; }
 
-        /* QUEUE LIST - ENTIRE TILE IS DRAGGABLE */
-        .queue-item { background: #181818; padding: 15px; margin: 8px 0; border-radius: 10px; display: flex; align-items: center; gap: 15px; border: 1px solid #282828; cursor: grab; transition: background 0.2s; }
-        .queue-item:active { cursor: grabbing; background: #222; }
-        .sortable-ghost { opacity: 0.4; background: var(--accent) !important; }
-
-        .song-details { flex-grow: 1; overflow: hidden; pointer-events: none; } /* Pass clicks through to tile */
-        .song-title { font-weight: bold; font-size: 1.25rem; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .song-user { font-size: 0.95rem; color: #888; display: flex; align-items: center; gap: 5px; }
+        /* QUEUE LIST */
+        .queue-item { background: #181818; padding: 12px; margin: 8px 0; border-radius: 10px; display: flex; align-items: center; gap: 12px; border: 1px solid #282828; }
         
-        .play-now { background: #222; color: var(--accent); border: 1px solid var(--accent); padding: 12px 20px; border-radius: 8px; font-weight: bold; position: relative; z-index: 2; }
-        .trash { color: var(--danger); font-size: 1.6rem; border: none; background: none; position: relative; z-index: 2; }
+        /* ENHANCED DRAG HANDLE */
+        .drag-handle { 
+            width: 50px; 
+            height: 60px; 
+            background: #222; 
+            border-radius: 8px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #555; 
+            font-size: 1.8rem; 
+            cursor: grab;
+            border: 1px solid #333;
+        }
+        .drag-handle:active { cursor: grabbing; color: var(--accent); background: #2a2a2a; }
+
+        .song-details { flex-grow: 1; overflow: hidden; }
+        .song-title { font-weight: bold; font-size: 1.25rem; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-user { font-size: 0.95rem; color: #888; display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+        
+        .play-now { background: #222; color: var(--accent); border: 1px solid var(--accent); padding: 12px 18px; border-radius: 8px; font-weight: bold; }
+        .trash { color: var(--danger); font-size: 1.6rem; border: none; background: none; padding: 0 5px; }
 
         .footer-tools { margin-top: 30px; display: flex; flex-direction: column; gap: 10px; }
         .btn-debug { background: #1a1a1a; color: #555; border: 1px dashed #333; padding: 12px; border-radius: 8px; font-size: 0.9rem; text-transform: uppercase; }
@@ -144,12 +156,11 @@
             database = firebase.database();
             let currentPlayerState = "paused", currentTotalTime = 0;
 
-            // DRAG AND DROP CONFIG
+            // SORTABLE WITH SPECIFIC HANDLE
             Sortable.create(document.getElementById('queue-list'), {
                 animation: 200,
+                handle: '.drag-handle', // Restricted to the big handle
                 ghostClass: 'sortable-ghost',
-                filter: '.play-now, .trash', // Prevent dragging when clicking these buttons
-                preventOnFilter: false,
                 onEnd: function() {
                     document.querySelectorAll('.queue-item').forEach((item, index) => {
                         database.ref('queue').child(item.getAttribute('data-key')).update({ sortOrder: index });
@@ -190,6 +201,7 @@
                     const div = document.createElement('div');
                     div.className = 'queue-item'; div.setAttribute('data-key', child.key);
                     div.innerHTML = `
+                        <div class="drag-handle"><i class="fas fa-bars"></i></div>
                         <div class="song-details">
                             <span class="song-title">${item.title}</span>
                             <span class="song-user"><i class="fab fa-twitch twitch-icon"></i> by ${item.user}</span>
