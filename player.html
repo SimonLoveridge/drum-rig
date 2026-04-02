@@ -1,146 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Drum Request - Stage Pro Overlay</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Drum Stream Overlay</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
-        :root {
-            --widget-width: 640px; 
-            --accent: #00ffcc;
-            --bg-dark: rgba(15, 15, 15, 0.95);
+        :root { --accent: #00ffcc; }
+        
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background: transparent; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
-        body {
-            margin: 0;
-            padding: 20px;
-            overflow: hidden;
-            background-color: transparent; 
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            color: white;
-        }
-
-        #widget-stack {
-            display: flex;
-            flex-direction: column;
-            width: var(--widget-width);
-            gap: 10px;
+        /* VIDEO CONTAINER */
+        #video-container {
             position: relative;
-        }
-
-        /* ARCADE OVERLAY */
-        #boot-screen {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #050505;
-            z-index: 999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            border: 2px solid var(--accent);
-            cursor: pointer;
-            transition: opacity 0.5s ease;
-        }
-
-        .boot-prompt {
-            font-family: 'Courier New', monospace;
-            color: var(--accent);
-            font-size: 2rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 5px;
-            animation: pulse 1.5s infinite;
-            text-shadow: 0 0 15px var(--accent);
-        }
-
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-        /* INFO CARD */
-        #info-card {
-            background: var(--bg-dark);
-            border-radius: 12px;
-            padding: 15px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            position: relative;
-            border: 1px solid #333;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-            z-index: 10;
-        }
-
-        #album-art { width: 55px; height: 55px; border-radius: 8px; object-fit: cover; border: 1px solid #444; flex-shrink: 0; }
-        .text-container { flex-grow: 1; overflow: hidden; }
-        #song-title { font-size: 1.25rem; font-weight: 800; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
-        #requester { font-size: 0.95rem; color: #aaa; display: flex; align-items: center; gap: 6px; }
-        #user-name { color: var(--accent); font-weight: bold; }
-        .twitch-icon { color: #9146ff; }
-
-        #progress-wrap { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: rgba(255,255,255,0.1); }
-        #progress-fill { height: 100%; background: var(--accent); width: 0%; box-shadow: 0 0 8px var(--accent); }
-
-        /* VIDEO AREA */
-        #video-frame {
-            width: var(--widget-width);
-            aspect-ratio: 16 / 9;
+            width: 640px; /* Standard OBS window size, adjust as needed */
+            height: 360px;
             background: #000;
-            border-radius: 12px;
+            border-radius: 8px;
             overflow: hidden;
-            border: 1px solid #333;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            position: relative;
         }
 
         #player { width: 100%; height: 100%; }
 
-        /* THE SHUTTER - Fades video to black when not playing */
-        #video-shutter {
+        /* TEXT OVERLAY - NO BACKGROUND */
+        #text-overlay {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
-            z-index: 5;
-            opacity: 1;
-            transition: opacity 0.4s ease-in-out;
+            top: 15px;
+            left: 15px;
+            z-index: 10;
             pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
-        
-        #video-shutter i {
-            color: rgba(255,255,255,0.2);
-            font-size: 3rem;
+
+        .song-title {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin: 0;
+            /* High-contrast shadow for visibility on any background */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+
+        .requested-by {
+            color: var(--accent);
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 2px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+        }
+
+        /* INTEGRATED PROGRESS BAR */
+        #progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px; /* Thin and subtle */
+            background: rgba(255,255,255,0.1);
+            z-index: 11;
+        }
+
+        #progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+            transition: width 0.5s linear;
         }
     </style>
 </head>
 <body>
 
-    <div id="widget-stack">
-        <div id="boot-screen" onclick="initializeSystem()">
-            <div class="boot-prompt">PRESS START</div>
-            <div style="color: #444; margin-top: 15px; font-size: 0.7rem; letter-spacing: 2px;">DRUM REQUEST v2.0</div>
+    <div id="video-container">
+        <div id="text-overlay">
+            <div id="display-title" class="song-title">STARTING SOON</div>
+            <div id="display-user" class="requested-by">WAITING FOR REQUESTS</div>
         </div>
+        
+        <div id="player"></div>
 
-        <div id="info-card">
-            <img id="album-art" src="">
-            <div class="text-container">
-                <span id="song-title">System Ready</span>
-                <div id="requester">
-                    <i class="fab fa-twitch twitch-icon"></i> 
-                    Requested by <span id="user-name">...</span>
-                </div>
-            </div>
-            <div id="progress-wrap"><div id="progress-fill"></div></div>
-        </div>
-
-        <div id="video-frame">
-            <div id="player"></div>
-            <div id="video-shutter">
-                <i id="shutter-icon" class="fas fa-pause"></i>
-            </div>
+        <div id="progress-container">
+            <div id="progress-fill"></div>
         </div>
     </div>
 
@@ -150,89 +96,75 @@
         const database = firebase.database();
 
         let player;
-        let systemArmed = false;
-
         const tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
-        document.getElementsByTagName('head')[0].appendChild(tag);
+        document.head.appendChild(tag);
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
-                height: '100%',
-                width: '100%',
+                height: '360',
+                width: '640',
+                videoId: '',
                 playerVars: { 
-                    'autoplay': 1, 
+                    'autoplay': 0, 
                     'controls': 0, 
-                    'disablekb': 1, 
                     'modestbranding': 1, 
-                    'rel': 0,
-                    'showinfo': 0,
-                    'autohide': 1
+                    'rel': 0, 
+                    'disablekb': 1 
                 },
-                events: { 
-                    'onReady': () => console.log("YT Engine Ready"), 
-                    'onStateChange': onPlayerStateChange 
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
                 }
             });
         }
 
-        function initializeSystem() {
-            if (systemArmed) return;
-            player.playVideo(); 
-            document.getElementById('boot-screen').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('boot-screen').style.display = 'none';
-                systemArmed = true;
-                startDatabaseSync();
-            }, 500);
-        }
-
-        function startDatabaseSync() {
-            database.ref('currentlyPlaying').on('value', snap => {
-                const data = snap.val();
-                if (data && data.id) {
-                    // Hide video immediately when a new song is loaded to mask the YT UI
-                    document.getElementById('video-shutter').style.opacity = "1";
+        function onPlayerReady(event) {
+            // Listen for Song Changes
+            database.ref('currentlyPlaying').on('value', snapshot => {
+                const data = snapshot.val();
+                if (data) {
+                    document.getElementById('display-title').innerText = data.title;
+                    document.getElementById('display-user').innerText = `REQUESTED BY: ${data.user}`;
                     player.loadVideoById(data.id);
-                    document.getElementById('song-title').innerText = data.title;
-                    document.getElementById('user-name').innerText = data.user;
-                    document.getElementById('album-art').src = `https://i.ytimg.com/vi/${data.id}/mqdefault.jpg`;
                 }
             });
 
-            database.ref('controls').limitToLast(1).on('child_added', snap => {
-                const cmd = snap.val();
-                if (!cmd || Date.now() - cmd.ts > 5000) return;
-                if (cmd.action === 'play') player.playVideo();
-                if (cmd.action === 'pause') player.pauseVideo();
-                if (cmd.action === 'seek') player.seekTo(cmd.value);
+            // Listen for Controls
+            database.ref('controls').on('child_added', snapshot => {
+                const data = snapshot.val();
+                if (!data || !player) return;
+
+                switch(data.action) {
+                    case 'play': player.playVideo(); break;
+                    case 'pause': player.pauseVideo(); break;
+                    case 'seek': player.seekTo(data.value); break;
+                    case 'mute':
+                        if (player.isMuted()) player.unMute();
+                        else player.mute();
+                        break;
+                }
+                snapshot.ref.remove();
             });
 
+            // Heartbeat: Send time and status back to Remote
             setInterval(() => {
                 if (player && player.getCurrentTime) {
-                    const current = player.getCurrentTime();
-                    const total = player.getDuration();
-                    if (total > 0) {
-                        database.ref('playbackTime').set({ current, total });
-                        document.getElementById('progress-fill').style.width = (current / total * 100) + "%";
-                    }
+                    database.ref('playbackTime').set({
+                        current: player.getCurrentTime(),
+                        total: player.getDuration()
+                    });
+                    
+                    // Update the visual progress bar
+                    const percent = (player.getCurrentTime() / player.getDuration()) * 100;
+                    document.getElementById('progress-fill').style.width = percent + "%";
                 }
             }, 1000);
         }
 
         function onPlayerStateChange(event) {
             let state = "paused";
-            const shutter = document.getElementById('video-shutter');
-            const icon = document.getElementById('shutter-icon');
-            
-            if (event.data == YT.PlayerState.PLAYING) {
-                state = "playing";
-                shutter.style.opacity = "0"; // Reveal video
-            } else {
-                shutter.style.opacity = "1"; // Hide video
-                // Show pause icon if explicitly paused, hide it if just buffering/unstarted
-                icon.style.opacity = (event.data == YT.PlayerState.PAUSED) ? "1" : "0";
-            }
+            if (event.data == YT.PlayerState.PLAYING) state = "playing";
             database.ref('playerStatus').set(state);
         }
     </script>
