@@ -17,42 +17,46 @@
         .numpad { display: grid; grid-template-columns: repeat(3, 80px); gap: 20px; }
         .num-btn { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #333; background: #1a1a1a; color: white; font-size: 1.8rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .num-btn:active { background: var(--accent); color: black; }
-        .num-btn.clear { border-color: var(--danger); color: var(--danger); font-size: 1.2rem; }
 
-        /* MAIN UI (Hidden initially) */
+        /* MAIN UI */
         #main-content { display: none; }
-
-        .card { background: var(--card-bg); border-radius: 12px; padding: 12px 20px; margin-bottom: 15px; border: 1px solid #333; text-align: center; }
-        .active-title { font-size: 2.2rem; font-weight: 800; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-        .active-user { font-size: 1.2rem; color: #aaa; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .user-highlight { color: #ffffff; font-weight: bold; }
+        .card { background: var(--card-bg); border-radius: 12px; padding: 15px 20px; margin-bottom: 15px; border: 1px solid #333; text-align: center; }
         
-        .media-controls { display: grid; grid-template-columns: 70px 1fr 70px 70px; gap: 12px; align-items: center; }
+        .active-title { font-size: 1.8rem; font-weight: 800; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+        .active-user { font-size: 1.1rem; color: #aaa; margin-bottom: 10px; }
+        .user-highlight { color: #ffffff; font-weight: bold; }
+
+        /* THUMBNAIL STYLE */
+        #active-thumb { 
+            width: 180px; 
+            aspect-ratio: 16/9; 
+            margin: 10px auto; 
+            border-radius: 8px; 
+            border: 2px solid #333; 
+            background: #000;
+            display: block;
+            object-fit: cover;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        
+        .media-controls { display: grid; grid-template-columns: 70px 1fr 70px 70px; gap: 12px; align-items: center; margin-top: 15px; }
         .btn-small { background: #333; color: white; border: none; padding: 15px; border-radius: 10px; font-size: 1.4rem; }
         .btn-play-lean { background: var(--accent); color: black; font-size: 2.2rem; border-radius: 10px; height: 55px; width: 100%; border: none; display: flex; align-items: center; justify-content: center; }
+        .btn-undo { background: #222; color: #555; border: 1px solid #333; padding: 15px; border-radius: 10px; font-size: 1.4rem; opacity: 0.4; pointer-events: none; }
+        .btn-undo.active { background: #443300; color: var(--undo-color); border: 1px solid var(--undo-color); opacity: 1; pointer-events: auto; }
 
-        .btn-undo { background: #222; color: #555; border: 1px solid #333; padding: 15px; border-radius: 10px; font-size: 1.4rem; transition: all 0.2s ease; opacity: 0.4; pointer-events: none; }
-        .btn-undo.active { background: #443300; color: var(--undo-color); border: 1px solid var(--undo-color); opacity: 1; pointer-events: auto; animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-
-        #progress-bar { width: 100%; accent-color: var(--accent); height: 20px; margin: 0; }
-        .time-display { display: flex; justify-content: space-between; font-size: 1rem; color: #888; font-family: monospace; margin-bottom: 5px; }
+        .time-display { display: flex; justify-content: space-between; font-size: 0.9rem; color: #888; font-family: monospace; margin-bottom: 5px; }
+        #progress-bar { width: 100%; accent-color: var(--accent); height: 15px; margin-bottom: 10px; }
 
         .queue-item { background: var(--card-bg); padding: 10px 15px; margin: 6px 0; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 1px solid #333; }
-        .drag-handle { color: var(--accent); font-size: 24px; padding: 5px; cursor: grab; touch-action: none; }
-        .song-info { flex-grow: 1; overflow: hidden; display: flex; align-items: center; gap: 10px; }
-        .title-block { flex-grow: 1; overflow: hidden; }
-        .song-title { font-weight: bold; font-size: 1.2rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #ffffff; }
-        .requested-by { font-size: 0.95rem; color: #ccc; font-weight: 500; }
-        .twitch-icon { color: var(--twitch); font-size: 0.9rem; }
-        
-        .play-next-btn { background: var(--accent); color: black; border: none; padding: 10px 12px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; flex-shrink: 0; }
-        .trash-btn { background: none; border: none; color: var(--danger); font-size: 1.4rem; padding: 10px; }
+        .drag-handle { color: var(--accent); font-size: 24px; cursor: grab; touch-action: none; }
+        .song-title { font-weight: bold; font-size: 1.1rem; color: #fff; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .requested-by { font-size: 0.9rem; color: #ccc; }
+        .play-next-btn { background: var(--accent); color: black; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
+        .trash-btn { background: none; border: none; color: var(--danger); font-size: 1.3rem; padding: 5px; }
 
-        .debug-footer { margin-top: 30px; text-align: center; border-top: 1px solid #333; padding-top: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .btn-debug-remote { background: #333; color: #888; border: 1px dashed #555; padding: 10px; border-radius: 8px; width: 100%; font-size: 0.8rem; text-transform: uppercase; }
-        
-        .btn-clear-danger { background: #221111; color: var(--danger); border: 1px solid #442222; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; }
-        .btn-clear-danger.confirm-state { background: var(--danger); color: black; border-color: white; }
+        .btn-clear-danger { background: #221111; color: var(--danger); border: 1px solid #442222; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; text-transform: uppercase; margin-top: 20px; }
+        .btn-clear-danger.confirm-state { background: var(--danger); color: black; }
     </style>
 </head>
 <body>
@@ -64,7 +68,7 @@
             <div class="num-btn" onclick="pressNum('1')">1</div><div class="num-btn" onclick="pressNum('2')">2</div><div class="num-btn" onclick="pressNum('3')">3</div>
             <div class="num-btn" onclick="pressNum('4')">4</div><div class="num-btn" onclick="pressNum('5')">5</div><div class="num-btn" onclick="pressNum('6')">6</div>
             <div class="num-btn" onclick="pressNum('7')">7</div><div class="num-btn" onclick="pressNum('8')">8</div><div class="num-btn" onclick="pressNum('9')">9</div>
-            <div class="num-btn clear" onclick="pressNum('C')">ESC</div><div class="num-btn" onclick="pressNum('0')">0</div><div class="num-btn clear" onclick="pressNum('D')"><i class="fas fa-backspace"></i></div>
+            <div class="num-btn" onclick="pressNum('C')" style="color:var(--danger)">C</div><div class="num-btn" onclick="pressNum('0')">0</div><div class="num-btn" onclick="pressNum('D')"><i class="fas fa-backspace"></i></div>
         </div>
     </div>
 
@@ -72,10 +76,13 @@
         <div class="card">
             <div id="active-title" class="active-title">Nothing Playing</div>
             <div id="active-user" class="active-user">Standby</div>
+            
+            <img id="active-thumb" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Thumbnail">
+            
             <div class="time-display"><span id="time-current">0:00</span><span id="time-total">0:00</span></div>
             <input type="range" id="progress-bar" min="0" max="100" value="0" onchange="seekVideo(this.value)">
             
-            <div class="media-controls" style="margin-top:10px;">
+            <div class="media-controls">
                 <button class="btn-small" onclick="sendControl('mute')"><i class="fas fa-volume-mute"></i></button>
                 <button class="btn-play-lean" onclick="togglePlayback()"><i id="toggle-icon" class="fas fa-play"></i></button>
                 <button class="btn-small" onclick="skipToNext()"><i class="fas fa-step-forward"></i></button>
@@ -84,15 +91,11 @@
         </div>
         
         <div id="queue-list"></div>
-
-        <div class="debug-footer">
-            <button class="btn-debug-remote" onclick="populateQueue()">Load Train of Thought Songs</button>
-            <button id="clear-btn" class="btn-clear-danger" onclick="clearQueue()">Clear Entire Queue</button>
-        </div>
+        <button id="clear-btn" class="btn-clear-danger" onclick="clearQueue()">Clear Entire Queue</button>
     </div>
 
     <script>
-        const SECRET_CODE = "596021"; // CHANGE YOUR PASSCODE HERE
+        const SECRET_CODE = "123456"; 
         let currentInput = "";
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
         
@@ -100,13 +103,8 @@
             if (n === 'C') currentInput = "";
             else if (n === 'D') currentInput = currentInput.slice(0, -1);
             else if (currentInput.length < 6) currentInput += n;
-            
             document.getElementById('pin-dots').innerText = "•".repeat(currentInput.length);
-            
-            if (currentInput === SECRET_CODE) {
-                localStorage.setItem('rig_access', 'true');
-                unlock();
-            }
+            if (currentInput === SECRET_CODE) { localStorage.setItem('rig_access', 'true'); unlock(); }
         }
 
         function unlock() {
@@ -115,14 +113,12 @@
             initApp();
         }
 
-        // Auto-unlock if already logged in
         if (localStorage.getItem('rig_access') === 'true') { unlock(); }
 
         function initApp() {
             firebase.initializeApp(firebaseConfig);
             const db = firebase.database();
-            let currentPlayerState = "paused", currentTotalTime = 0, activeSongData = null, lastAction = null;
-            let clearConfirmTimer = null;
+            let currentPlayerState = "paused", currentTotalTime = 0, lastAction = null;
 
             Sortable.create(document.getElementById('queue-list'), {
                 animation: 150, handle: '.drag-handle', onEnd: function() {
@@ -132,33 +128,11 @@
                 }
             });
 
-            // Rest of your logic (clearQueue, popQueue, etc.) continues here...
-            // [Included in full script for functionality]
-            window.populateQueue = function() {
-                const songs = [{id:'_Q9Ss5zZU4k',title:'As I Am'},{id:'PqKZFSZ_6yU',title:'This Dying Soul'},{id:'P9Lnan8t0v8',title:'Endless Sacrifice'}];
-                songs.forEach((s, i) => db.ref('queue').push({...s, user: 'System', sortOrder: i}));
-            };
-
-            window.clearQueue = function() {
-                const btn = document.getElementById('clear-btn');
-                if (btn.classList.contains('confirm-state')) {
-                    db.ref('queue').once('value', snap => {
-                        lastAction = { type: 'clear', fullData: snap.val() };
-                        updateUndoUI(true);
-                        db.ref('queue').remove();
-                        resetClearButton();
-                    });
-                } else {
-                    btn.classList.add('confirm-state'); btn.innerText = "Are you sure?";
-                    clearConfirmTimer = setTimeout(resetClearButton, 3000);
-                }
-            };
-            function resetClearButton() { const btn = document.getElementById('clear-btn'); btn.classList.remove('confirm-state'); btn.innerText = "Clear Entire Queue"; }
-
             db.ref('playerStatus').on('value', snap => {
                 currentPlayerState = snap.val() || "paused";
                 document.getElementById('toggle-icon').className = (currentPlayerState === "playing") ? "fas fa-pause" : "fas fa-play";
             });
+
             db.ref('playbackTime').on('value', snap => {
                 const data = snap.val(); if (!data) return;
                 currentTotalTime = data.total;
@@ -168,20 +142,27 @@
                 document.getElementById('time-current').innerText = formatTime(data.current);
                 document.getElementById('time-total').innerText = formatTime(data.total);
             });
+
             db.ref('currentlyPlaying').on('value', snap => {
-                activeSongData = snap.val();
-                if(activeSongData) {
-                    document.getElementById('active-title').innerText = activeSongData.title;
-                    document.getElementById('active-user').innerHTML = `<i class="fab fa-twitch twitch-icon"></i> Requested by: <span class="user-highlight">${activeSongData.user}</span>`;
+                const data = snap.val();
+                if(data) {
+                    document.getElementById('active-title').innerText = data.title;
+                    document.getElementById('active-user').innerHTML = `Requested by: <span class="user-highlight">${data.user}</span>`;
+                    // SET THUMBNAIL URL
+                    document.getElementById('active-thumb').src = `https://i.ytimg.com/vi/${data.id}/mqdefault.jpg`;
+                    document.getElementById('active-thumb').style.opacity = "1";
+                } else {
+                    document.getElementById('active-thumb').style.opacity = "0";
                 }
             });
+
             db.ref('queue').orderByChild('sortOrder').on('value', snap => {
                 const list = document.getElementById('queue-list'); list.innerHTML = "";
                 snap.forEach(child => {
                     const item = child.val();
                     const div = document.createElement('div');
                     div.className = 'queue-item'; div.setAttribute('data-key', child.key);
-                    div.innerHTML = `<div class="drag-handle"><i class="fas fa-bars"></i></div><div class="song-info"><div class="title-block"><span class="song-title">${item.title}</span><span class="requested-by">${item.user}</span></div><button class="play-next-btn" onclick="loadTrack('${child.key}', ${JSON.stringify(item).replace(/"/g, '&quot;')})">PLAY NEXT</button></div><button class="trash-btn" onclick="deleteTrack('${child.key}')"><i class="fas fa-trash-alt"></i></button>`;
+                    div.innerHTML = `<div class="drag-handle"><i class="fas fa-bars"></i></div><div style="flex-grow:1; overflow:hidden;"><span class="song-title">${item.title}</span><span class="requested-by">${item.user}</span></div><button class="play-next-btn" onclick="loadTrack('${child.key}', ${JSON.stringify(item).replace(/"/g, '&quot;')})">PLAY</button><button class="trash-btn" onclick="deleteTrack('${child.key}')"><i class="fas fa-trash-alt"></i></button>`;
                     list.appendChild(div);
                 });
             });
@@ -191,13 +172,25 @@
             window.togglePlayback = () => sendControl(currentPlayerState === "playing" ? "pause" : "play");
             window.seekVideo = p => sendControl('seek', (p / 100) * currentTotalTime);
             window.deleteTrack = k => db.ref('queue').child(k).remove();
-            window.loadTrack = (k, item) => {
-                db.ref('currentlyPlaying').set({ ...item, ts: Date.now() });
-                db.ref('queue').child(k).remove();
-            };
-            window.handleUndo = () => { if(lastAction?.type === 'clear') db.ref('queue').set(lastAction.fullData); lastAction = null; updateUndoUI(false); };
-            function updateUndoUI(h) { const b = document.getElementById('undo-btn'); if(h) b.classList.add('active'); else b.classList.remove('active'); }
+            window.loadTrack = (k, item) => { db.ref('currentlyPlaying').set({ ...item, ts: Date.now() }); db.ref('queue').child(k).remove(); };
             window.skipToNext = () => { db.ref('queue').orderByChild('sortOrder').limitToFirst(1).once('value', s => s.forEach(c => loadTrack(c.key, c.val()))); };
+            
+            window.clearQueue = function() {
+                const btn = document.getElementById('clear-btn');
+                if (btn.classList.contains('confirm-state')) {
+                    db.ref('queue').once('value', snap => {
+                        lastAction = { type: 'clear', fullData: snap.val() };
+                        updateUndoUI(true);
+                        db.ref('queue').remove();
+                        btn.classList.remove('confirm-state'); btn.innerText = "Clear Entire Queue";
+                    });
+                } else {
+                    btn.classList.add('confirm-state'); btn.innerText = "Confirm Clear?";
+                    setTimeout(() => { btn.classList.remove('confirm-state'); btn.innerText = "Clear Entire Queue"; }, 3000);
+                }
+            };
+            function updateUndoUI(h) { const b = document.getElementById('undo-btn'); if(h) b.classList.add('active'); else b.classList.remove('active'); }
+            window.handleUndo = () => { if(lastAction?.type === 'clear') db.ref('queue').set(lastAction.fullData); lastAction = null; updateUndoUI(false); };
         }
     </script>
 </body>
