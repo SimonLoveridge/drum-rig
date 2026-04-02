@@ -8,61 +8,65 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        :root { --accent: #00ffcc; --card-bg: #1e1e1e; --undo-color: #ffcc00; --twitch: #9146ff; --danger: #ff4444; }
-        body { background: #121212; color: #eee; font-family: sans-serif; padding: 15px; margin: 0; overflow-x: hidden; }
+        :root { --accent: #00ffcc; --card-bg: #1a1a1a; --undo-color: #ffcc00; --twitch: #9146ff; --danger: #ff4444; }
+        body { background: #0a0a0a; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px; margin: 0; }
 
-        /* NUMPAD OVERLAY */
-        #lock-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#0a0a0a; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        /* AUTH SCREEN (Existing Logic) */
+        #lock-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; }
         .pin-display { font-size: 3rem; letter-spacing: 15px; color: var(--accent); margin-bottom: 30px; height: 60px; }
-        .numpad { display: grid; grid-template-columns: repeat(3, 80px); gap: 20px; }
-        .num-btn { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #333; background: #1a1a1a; color: white; font-size: 1.8rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .numpad { display: grid; grid-template-columns: repeat(3, 85px); gap: 15px; }
+        .num-btn { width: 85px; height: 85px; border-radius: 50%; border: 2px solid #222; background: #111; color: white; font-size: 2rem; display: flex; align-items: center; justify-content: center; }
         .num-btn:active { background: var(--accent); color: black; }
 
-        /* MAIN UI */
-        #main-content { display: none; }
-        .card { background: var(--card-bg); border-radius: 12px; padding: 15px 20px; margin-bottom: 15px; border: 1px solid #333; text-align: center; }
+        #main-content { display: none; max-width: 900px; margin: 0 auto; }
+
+        /* --- THE NEW DASHBOARD LAYOUT --- */
+        .dashboard-card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
-        .active-title { font-size: 1.8rem; font-weight: 800; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-        .active-user { font-size: 1.1rem; color: #aaa; margin-bottom: 10px; }
-        .user-highlight { color: #ffffff; font-weight: bold; }
+        .track-info { margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; }
+        .active-title { font-size: 1.8rem; font-weight: 900; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .active-user { color: var(--accent); font-weight: bold; font-size: 1.1rem; margin-top: 4px; }
 
-        /* THUMBNAIL STYLE */
-        #active-thumb { 
-            width: 180px; 
-            aspect-ratio: 16/9; 
-            margin: 10px auto; 
-            border-radius: 8px; 
-            border: 2px solid #333; 
-            background: #000;
-            display: block;
-            object-fit: cover;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
+        .split-controls { display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; }
         
-        .media-controls { display: grid; grid-template-columns: 70px 1fr 70px 70px; gap: 12px; align-items: center; margin-top: 15px; }
-        .btn-small { background: #333; color: white; border: none; padding: 15px; border-radius: 10px; font-size: 1.4rem; }
-        .btn-play-lean { background: var(--accent); color: black; font-size: 2.2rem; border-radius: 10px; height: 55px; width: 100%; border: none; display: flex; align-items: center; justify-content: center; }
-        .btn-undo { background: #222; color: #555; border: 1px solid #333; padding: 15px; border-radius: 10px; font-size: 1.4rem; opacity: 0.4; pointer-events: none; }
-        .btn-undo.active { background: #443300; color: var(--undo-color); border: 1px solid var(--undo-color); opacity: 1; pointer-events: auto; }
+        /* Left: Thumbnail */
+        .thumb-box { flex: 1.2; position: relative; border-radius: 12px; overflow: hidden; border: 2px solid #333; background: #000; display: flex; align-items: center; justify-content: center; }
+        #active-thumb { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s; }
 
-        .time-display { display: flex; justify-content: space-between; font-size: 0.9rem; color: #888; font-family: monospace; margin-bottom: 5px; }
-        #progress-bar { width: 100%; accent-color: var(--accent); height: 15px; margin-bottom: 10px; }
+        /* Right: High-Impact Buttons */
+        .btn-stack { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+        
+        .main-trigger { flex: 2; background: var(--accent); color: black; border: none; border-radius: 12px; font-size: 3rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 0 #008a6e; }
+        .main-trigger:active { transform: translateY(2px); box-shadow: none; }
+        
+        .secondary-actions { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .btn-action { background: #333; color: white; border: none; border-radius: 10px; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; }
+        .btn-action.skip { background: #444; font-size: 1.8rem; flex-grow: 2; }
+        .btn-action.undo.active { background: #443300; color: var(--undo-color); border: 1px solid var(--undo-color); }
+        .btn-action:active { background: #555; }
 
-        .queue-item { background: var(--card-bg); padding: 10px 15px; margin: 6px 0; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 1px solid #333; }
-        .drag-handle { color: var(--accent); font-size: 24px; cursor: grab; touch-action: none; }
-        .song-title { font-weight: bold; font-size: 1.1rem; color: #fff; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .requested-by { font-size: 0.9rem; color: #ccc; }
-        .play-next-btn { background: var(--accent); color: black; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
-        .trash-btn { background: none; border: none; color: var(--danger); font-size: 1.3rem; padding: 5px; }
+        /* Progress Area */
+        .progress-area { width: 100%; margin-top: 10px; }
+        .time-labels { display: flex; justify-content: space-between; font-family: monospace; color: #888; font-size: 1.1rem; margin-bottom: 5px; }
+        #progress-bar { width: 100%; height: 25px; accent-color: var(--accent); cursor: pointer; }
 
-        .btn-clear-danger { background: #221111; color: var(--danger); border: 1px solid #442222; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; text-transform: uppercase; margin-top: 20px; }
-        .btn-clear-danger.confirm-state { background: var(--danger); color: black; }
+        /* Queue List */
+        .queue-item { background: #181818; padding: 12px 15px; margin: 8px 0; border-radius: 10px; display: flex; align-items: center; gap: 15px; border: 1px solid #282828; }
+        .drag-handle { color: #444; font-size: 1.5rem; padding: 5px; cursor: grab; }
+        .song-details { flex-grow: 1; overflow: hidden; }
+        .song-title { font-weight: bold; font-size: 1.2rem; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-user { font-size: 0.9rem; color: #888; }
+        .play-now { background: #333; color: var(--accent); border: 1px solid var(--accent); padding: 10px 15px; border-radius: 8px; font-weight: bold; }
+        .trash { color: var(--danger); font-size: 1.5rem; border: none; background: none; padding: 5px 10px; }
+
+        .clear-zone { margin-top: 30px; }
+        .btn-danger-wide { width: 100%; padding: 20px; background: #201010; color: var(--danger); border: 1px solid var(--danger); border-radius: 12px; font-weight: bold; text-transform: uppercase; font-size: 1.1rem; }
+        .btn-danger-wide.confirm { background: var(--danger); color: black; }
     </style>
 </head>
 <body>
 
     <div id="lock-screen">
-        <div style="color: #666; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px;">Enter Access Key</div>
         <div id="pin-dots" class="pin-display"></div>
         <div class="numpad">
             <div class="num-btn" onclick="pressNum('1')">1</div><div class="num-btn" onclick="pressNum('2')">2</div><div class="num-btn" onclick="pressNum('3')">3</div>
@@ -73,25 +77,43 @@
     </div>
 
     <div id="main-content">
-        <div class="card">
-            <div id="active-title" class="active-title">Nothing Playing</div>
-            <div id="active-user" class="active-user">Standby</div>
-            
-            <img id="active-thumb" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Thumbnail">
-            
-            <div class="time-display"><span id="time-current">0:00</span><span id="time-total">0:00</span></div>
-            <input type="range" id="progress-bar" min="0" max="100" value="0" onchange="seekVideo(this.value)">
-            
-            <div class="media-controls">
-                <button class="btn-small" onclick="sendControl('mute')"><i class="fas fa-volume-mute"></i></button>
-                <button class="btn-play-lean" onclick="togglePlayback()"><i id="toggle-icon" class="fas fa-play"></i></button>
-                <button class="btn-small" onclick="skipToNext()"><i class="fas fa-step-forward"></i></button>
-                <button id="undo-btn" class="btn-undo" onclick="handleUndo()"><i class="fas fa-undo"></i></button>
+        <div class="dashboard-card">
+            <div class="track-info">
+                <div id="active-title" class="active-title">No Track Loaded</div>
+                <div id="active-user" class="active-user">Ready for Session</div>
+            </div>
+
+            <div class="split-controls">
+                <div class="thumb-box">
+                    <img id="active-thumb" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+                </div>
+                
+                <div class="btn-stack">
+                    <button class="main-trigger" onclick="togglePlayback()">
+                        <i id="toggle-icon" class="fas fa-play"></i>
+                    </button>
+                    <div class="secondary-actions">
+                        <button class="btn-action" onclick="sendControl('mute')"><i class="fas fa-volume-mute"></i></button>
+                        <button id="undo-btn" class="btn-action undo" onclick="handleUndo()"><i class="fas fa-undo"></i></button>
+                        <button class="btn-action skip" onclick="skipToNext()"><i class="fas fa-forward"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-area">
+                <div class="time-labels">
+                    <span id="time-current">0:00</span>
+                    <span id="time-total">0:00</span>
+                </div>
+                <input type="range" id="progress-bar" min="0" max="100" value="0" onchange="seekVideo(this.value)">
             </div>
         </div>
-        
+
         <div id="queue-list"></div>
-        <button id="clear-btn" class="btn-clear-danger" onclick="clearQueue()">Clear Entire Queue</button>
+        
+        <div class="clear-zone">
+            <button id="clear-btn" class="btn-danger-wide" onclick="clearQueue()">Clear Everything</button>
+        </div>
     </div>
 
     <script>
@@ -113,7 +135,7 @@
             initApp();
         }
 
-        if (localStorage.getItem('rig_access') === 'true') { unlock(); }
+        if (localStorage.getItem('rig_access') === 'true') unlock();
 
         function initApp() {
             firebase.initializeApp(firebaseConfig);
@@ -147,51 +169,5 @@
                 const data = snap.val();
                 if(data) {
                     document.getElementById('active-title').innerText = data.title;
-                    document.getElementById('active-user').innerHTML = `Requested by: <span class="user-highlight">${data.user}</span>`;
-                    // SET THUMBNAIL URL
-                    document.getElementById('active-thumb').src = `https://i.ytimg.com/vi/${data.id}/mqdefault.jpg`;
-                    document.getElementById('active-thumb').style.opacity = "1";
-                } else {
-                    document.getElementById('active-thumb').style.opacity = "0";
-                }
-            });
-
-            db.ref('queue').orderByChild('sortOrder').on('value', snap => {
-                const list = document.getElementById('queue-list'); list.innerHTML = "";
-                snap.forEach(child => {
-                    const item = child.val();
-                    const div = document.createElement('div');
-                    div.className = 'queue-item'; div.setAttribute('data-key', child.key);
-                    div.innerHTML = `<div class="drag-handle"><i class="fas fa-bars"></i></div><div style="flex-grow:1; overflow:hidden;"><span class="song-title">${item.title}</span><span class="requested-by">${item.user}</span></div><button class="play-next-btn" onclick="loadTrack('${child.key}', ${JSON.stringify(item).replace(/"/g, '&quot;')})">PLAY</button><button class="trash-btn" onclick="deleteTrack('${child.key}')"><i class="fas fa-trash-alt"></i></button>`;
-                    list.appendChild(div);
-                });
-            });
-
-            window.formatTime = s => Math.floor(s/60) + ":" + Math.floor(s%60).toString().padStart(2,'0');
-            window.sendControl = (a, v = null) => db.ref('controls').push({ action: a, value: v, ts: Date.now() });
-            window.togglePlayback = () => sendControl(currentPlayerState === "playing" ? "pause" : "play");
-            window.seekVideo = p => sendControl('seek', (p / 100) * currentTotalTime);
-            window.deleteTrack = k => db.ref('queue').child(k).remove();
-            window.loadTrack = (k, item) => { db.ref('currentlyPlaying').set({ ...item, ts: Date.now() }); db.ref('queue').child(k).remove(); };
-            window.skipToNext = () => { db.ref('queue').orderByChild('sortOrder').limitToFirst(1).once('value', s => s.forEach(c => loadTrack(c.key, c.val()))); };
-            
-            window.clearQueue = function() {
-                const btn = document.getElementById('clear-btn');
-                if (btn.classList.contains('confirm-state')) {
-                    db.ref('queue').once('value', snap => {
-                        lastAction = { type: 'clear', fullData: snap.val() };
-                        updateUndoUI(true);
-                        db.ref('queue').remove();
-                        btn.classList.remove('confirm-state'); btn.innerText = "Clear Entire Queue";
-                    });
-                } else {
-                    btn.classList.add('confirm-state'); btn.innerText = "Confirm Clear?";
-                    setTimeout(() => { btn.classList.remove('confirm-state'); btn.innerText = "Clear Entire Queue"; }, 3000);
-                }
-            };
-            function updateUndoUI(h) { const b = document.getElementById('undo-btn'); if(h) b.classList.add('active'); else b.classList.remove('active'); }
-            window.handleUndo = () => { if(lastAction?.type === 'clear') db.ref('queue').set(lastAction.fullData); lastAction = null; updateUndoUI(false); };
-        }
-    </script>
-</body>
-</html>
+                    document.getElementById('active-user').innerText = `Request from: ${data.user}`;
+                    document.getElementById
