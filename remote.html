@@ -10,61 +10,59 @@
     <style>
         :root { --accent: #00ffcc; --card-bg: #1a1a1a; --undo-color: #ffcc00; --twitch: #9146ff; --danger: #ff4444; }
         
-        * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+        * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; touch-action: manipulation; box-sizing: border-box; }
         
-        body { background: #0a0a0a; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px; margin: 0; }
+        body { background: #0a0a0a; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px; margin: 0; overflow-x: hidden; }
 
         /* AUTH SCREEN */
         #lock-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-        .pin-display { font-size: 3.5rem; letter-spacing: 15px; color: var(--accent); margin-bottom: 30px; height: 60px; font-family: monospace; }
+        .pin-display { font-size: 3.5rem; letter-spacing: 15px; color: var(--accent); margin-bottom: 30px; height: 80px; font-family: monospace; display: flex; align-items: center; justify-content: center; }
+        .pin-display.access-granted { color: #00ff00; text-shadow: 0 0 20px #00ff00; }
+        
         .numpad { display: grid; grid-template-columns: repeat(3, 90px); gap: 20px; }
-        .num-btn { width: 90px; height: 90px; border-radius: 50%; border: 2px solid #222; background: #111; color: white; font-size: 2.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .num-btn:active { background: var(--accent); color: black; transform: scale(0.95); }
+        .num-btn { width: 90px; height: 90px; border-radius: 50%; border: 2px solid #222; background: #111; color: white; font-size: 2.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.1s; }
+        .num-btn:active { background: var(--accent); color: black; transform: scale(0.9); }
 
-        #main-content { display: none; max-width: 900px; margin: 0 auto; }
+        #main-content { display: none; max-width: 900px; margin: 0 auto; padding-bottom: 50px; }
 
         /* DASHBOARD */
         .dashboard-card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .track-info { margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; text-align: center; }
-        .active-title { font-size: 1.8rem; font-weight: 900; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .active-user { color: #aaa; font-weight: bold; font-size: 1.1rem; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .active-title { font-size: 1.6rem; font-weight: 900; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .active-user { color: #aaa; font-weight: bold; font-size: 1rem; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .twitch-icon { color: var(--twitch); }
         .user-highlight { color: var(--accent); }
 
-        .split-controls { display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; }
-        .thumb-box { flex: 1.2; border-radius: 12px; overflow: hidden; border: 2px solid #333; background: #000; display: flex; align-items: center; justify-content: center; min-height: 180px; }
+        .split-controls { display: flex; gap: 15px; align-items: stretch; margin-bottom: 20px; }
+        .thumb-box { flex: 1; border-radius: 12px; overflow: hidden; border: 2px solid #333; background: #000; display: flex; align-items: center; justify-content: center; min-height: 140px; }
         #active-thumb { width: 100%; height: 100%; object-fit: cover; }
 
-        .btn-stack { flex: 1; display: flex; flex-direction: column; gap: 12px; }
-        .main-trigger { flex: 2; background: var(--accent); color: black; border: none; border-radius: 12px; font-size: 3.5rem; display: flex; align-items: center; justify-content: center; }
+        .btn-stack { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        .main-trigger { flex: 2; background: var(--accent); color: black; border: none; border-radius: 12px; font-size: 3rem; display: flex; align-items: center; justify-content: center; }
         
         .secondary-actions { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-        .btn-action { background: #333; color: white; border: none; border-radius: 10px; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; }
+        .btn-action { background: #333; color: white; border: none; border-radius: 10px; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; min-height: 50px; }
         
-        /* UNDO STATE */
-        .btn-action.undo { color: #444; pointer-events: none; transition: all 0.3s ease; }
+        .btn-action.undo { color: #444; pointer-events: none; }
         .btn-action.undo.active { color: var(--undo-color); background: #332b00; border: 1px solid var(--undo-color); pointer-events: auto; }
 
         .progress-area { width: 100%; }
-        .time-labels { display: flex; justify-content: space-between; font-family: monospace; color: #888; font-size: 1.1rem; margin-bottom: 8px; }
-        #progress-bar { width: 100%; height: 35px; accent-color: var(--accent); cursor: pointer; }
+        .time-labels { display: flex; justify-content: space-between; font-family: monospace; color: #888; font-size: 1rem; margin-bottom: 8px; }
+        #progress-bar { width: 100%; height: 40px; accent-color: var(--accent); cursor: pointer; }
 
         /* QUEUE LIST */
-        .queue-item { background: #1c1c1c; padding: 12px; margin: 12px 0; border-radius: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid #3a3a3a; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        
-        .drag-handle { width: 50px; height: 60px; background: #262626; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.8rem; cursor: grab; border: 1px solid #444; }
-        .drag-handle:active { cursor: grabbing; color: var(--accent); background: #333; }
-
+        .queue-item { background: #1c1c1c; padding: 12px; margin: 10px 0; border-radius: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid #3a3a3a; }
+        .drag-handle { width: 45px; height: 55px; background: #262626; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.5rem; }
         .song-details { flex-grow: 1; overflow: hidden; }
-        .song-title { font-weight: bold; font-size: 1.25rem; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .song-user { font-size: 0.95rem; color: #aaa; display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+        .song-title { font-weight: bold; font-size: 1.1rem; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-user { font-size: 0.9rem; color: #aaa; display: flex; align-items: center; gap: 5px; }
         
-        .play-now { background: #222; color: var(--accent); border: 1px solid var(--accent); padding: 12px 18px; border-radius: 8px; font-weight: bold; }
-        .trash { color: var(--danger); font-size: 1.6rem; border: none; background: none; padding: 0 5px; }
+        .play-now { background: #222; color: var(--accent); border: 1px solid var(--accent); padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; }
+        .trash { color: var(--danger); font-size: 1.4rem; border: none; background: none; }
 
         .footer-tools { margin-top: 30px; display: flex; flex-direction: column; gap: 10px; }
-        .btn-debug { background: #1a1a1a; color: #555; border: 1px dashed #333; padding: 12px; border-radius: 8px; font-size: 0.9rem; text-transform: uppercase; }
-        .btn-danger-wide { width: 100%; padding: 25px; background: #201010; color: var(--danger); border: 1px solid var(--danger); border-radius: 12px; font-weight: bold; text-transform: uppercase; font-size: 1.2rem; }
+        .btn-debug { background: #1a1a1a; color: #555; border: 1px dashed #333; padding: 15px; border-radius: 8px; font-size: 0.8rem; }
+        .btn-danger-wide { width: 100%; padding: 20px; background: #201010; color: var(--danger); border: 1px solid var(--danger); border-radius: 12px; font-weight: bold; }
         .btn-danger-wide.confirm { background: var(--danger); color: black; }
     </style>
 </head>
@@ -93,7 +91,7 @@
                     <div class="secondary-actions">
                         <button class="btn-action" onclick="sendControl('mute')"><i class="fas fa-volume-mute"></i></button>
                         <button id="undo-btn" class="btn-action undo" onclick="handleUndo()"><i class="fas fa-undo"></i></button>
-                        <button class="btn-action skip" onclick="skipToNext()"><i class="fas fa-forward"></i></button>
+                        <button class="btn-action" onclick="skipToNext()"><i class="fas fa-forward"></i></button>
                     </div>
                 </div>
             </div>
@@ -106,7 +104,7 @@
         <div id="queue-list"></div>
         
         <div class="footer-tools">
-            <button class="btn-debug" onclick="populateQueue()">Load Train of Thought Songs</button>
+            <button class="btn-debug" onclick="populateQueue()">Load Sample Playlist</button>
             <button id="clear-btn" class="btn-danger-wide" onclick="clearQueue()">Clear Everything</button>
         </div>
     </div>
@@ -117,12 +115,36 @@
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
         let database, lastAction = null, currentSongState = null, currentPlayTime = 0, currentPlayerState = "paused";
 
+        // OVERHAULED PIN LOGIC
         function pressNum(n) {
-            if (n === 'C') currentInput = "";
-            else if (n === 'D') currentInput = currentInput.slice(0, -1);
-            else if (currentInput.length < 6) currentInput += n;
-            document.getElementById('pin-dots').innerText = "•".repeat(currentInput.length);
-            if (currentInput === SECRET_CODE) { localStorage.setItem('rig_access', 'true'); unlock(); }
+            const display = document.getElementById('pin-dots');
+            
+            if (n === 'C') {
+                currentInput = "";
+            } else if (n === 'D') {
+                currentInput = currentInput.slice(0, -1);
+            } else {
+                if (currentInput.length < 6) currentInput += n;
+            }
+
+            // Visual dots update
+            display.innerText = "•".repeat(currentInput.length);
+
+            // Check for match
+            if (currentInput === SECRET_CODE) {
+                display.classList.add('access-granted');
+                display.innerText = "ACCESS GRANTED";
+                localStorage.setItem('rig_access', 'true');
+                setTimeout(unlock, 600);
+            } else if (currentInput.length >= 6) {
+                // Wrong code feedback
+                display.style.color = 'red';
+                setTimeout(() => {
+                    display.style.color = '';
+                    currentInput = "";
+                    display.innerText = "";
+                }, 500);
+            }
         }
 
         function unlock() {
@@ -131,14 +153,13 @@
             initApp();
         }
 
-        if (localStorage.getItem('rig_access') === 'true') unlock();
-
-        function setUndo(action) {
-            lastAction = action;
-            document.getElementById('undo-btn').classList.add('active');
+        if (localStorage.getItem('rig_access') === 'true') {
+            // Tiny delay to ensure DOM is ready
+            setTimeout(unlock, 100);
         }
 
         function initApp() {
+            if (database) return; // Prevent double init
             firebase.initializeApp(firebaseConfig);
             database = firebase.database();
             let currentTotalTime = 0;
@@ -146,7 +167,6 @@
             Sortable.create(document.getElementById('queue-list'), {
                 animation: 200,
                 handle: '.drag-handle',
-                ghostClass: 'sortable-ghost',
                 onEnd: function() {
                     document.querySelectorAll('.queue-item').forEach((item, index) => {
                         database.ref('queue').child(item.getAttribute('data-key')).update({ sortOrder: index });
@@ -175,7 +195,7 @@
                 if(data) {
                     currentSongState = data;
                     document.getElementById('active-title').innerText = data.title;
-                    document.getElementById('active-user').innerHTML = `<i class="fab fa-twitch twitch-icon"></i> Request from: <span class="user-highlight">${data.user}</span>`;
+                    document.getElementById('active-user').innerHTML = `<i class="fab fa-twitch twitch-icon"></i> Request: <span class="user-highlight">${data.user}</span>`;
                     document.getElementById('active-thumb').src = `https://i.ytimg.com/vi/${data.id}/mqdefault.jpg`;
                 }
             });
@@ -190,7 +210,7 @@
                         <div class="drag-handle"><i class="fas fa-bars"></i></div>
                         <div class="song-details">
                             <span class="song-title">${item.title}</span>
-                            <span class="song-user"><i class="fab fa-twitch twitch-icon"></i> by ${item.user}</span>
+                            <span class="song-user">by ${item.user}</span>
                         </div>
                         <button class="play-now" onclick="loadTrack('${child.key}', ${JSON.stringify(item).replace(/"/g, '&quot;')})">LOAD</button>
                         <button class="trash" onclick="deleteTrack('${child.key}', ${JSON.stringify(item).replace(/"/g, '&quot;')})"><i class="fas fa-trash"></i></button>`;
@@ -220,65 +240,28 @@
                         s.forEach(c => {
                             const item = c.val();
                             loadTrack(c.key, item);
-                            // If paused, ensure the new song loads in a paused state at 0
                             if (currentPlayerState === "paused") {
-                                setTimeout(() => {
-                                    sendControl('pause');
-                                    sendControl('seek', 0);
-                                }, 300);
+                                setTimeout(() => { sendControl('pause'); sendControl('seek', 0); }, 300);
                             }
                         });
                     }
                 });
             };
-            
-            window.clearQueue = function() {
-                const btn = document.getElementById('clear-btn');
-                if (btn.classList.contains('confirm')) {
-                    database.ref('queue').once('value', snap => {
-                        if (snap.exists()) setUndo({ type: 'clear', data: snap.val() });
-                        database.ref('queue').remove();
-                        btn.classList.remove('confirm'); btn.innerText = "Clear Everything";
-                    });
-                } else {
-                    btn.classList.add('confirm'); btn.innerText = "ARE YOU SURE?";
-                    setTimeout(() => { btn.classList.remove('confirm'); btn.innerText = "Clear Everything"; }, 3000);
-                }
-            };
 
+            function setUndo(action) {
+                lastAction = action;
+                document.getElementById('undo-btn').classList.add('active');
+            }
+            
             window.handleUndo = () => { 
                 if(!lastAction) return;
-                if(lastAction.type === 'clear') {
-                    database.ref('queue').set(lastAction.data);
-                } 
-                else if(lastAction.type === 'delete') {
-                    database.ref('queue').once('value', snap => {
-                        const endPos = snap.numChildren();
-                        database.ref('queue').push({ ...lastAction.data, sortOrder: endPos });
-                    });
-                } 
-                else if(lastAction.type === 'swap') {
-                    if(currentSongState) database.ref('queue').push({...currentSongState, sortOrder: -1});
+                if(lastAction.type === 'delete') database.ref('queue').push({ ...lastAction.data, sortOrder: 999 });
+                if(lastAction.type === 'swap') {
                     database.ref('currentlyPlaying').set(lastAction.data);
                     setTimeout(() => sendControl('seek', lastAction.time), 500);
                 }
                 lastAction = null; 
                 document.getElementById('undo-btn').classList.remove('active'); 
-            };
-
-            window.populateQueue = function() {
-                database.ref('queue').once('value', snap => {
-                    const currentCount = snap.numChildren();
-                    const songs = [
-                        {id:'_Q9Ss5zZU4k',title:'As I Am', user: 'Mike_Portnoy'},
-                        {id:'PqKZFSZ_6yU',title:'This Dying Soul', user: 'John_Petrucci'},
-                        {id:'P9Lnan8t0v8',title:'Endless Sacrifice', user: 'Jordan_Rudess'}
-                        {id:'BE9CXWV1alg',title:'Limp Bizkit - My Generation', user: 'Fred_Durst'}
-                    ];
-                    songs.forEach((s, index) => {
-                        database.ref('queue').push({ ...s, sortOrder: currentCount + index });
-                    });
-                });
             };
         }
     </script>
