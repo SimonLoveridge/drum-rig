@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Drum Overlay - Text Only</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root { --accent: #00ffcc; }
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            background: transparent; /* Essential for OBS */
+            overflow: hidden; 
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        #info-box {
+            display: flex;
+            flex-direction: column;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        .requested-by {
+            color: var(--accent);
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            /* Heavy shadow for transparency visibility */
+            text-shadow: 2px 2px 4px rgba(0,0,0,1);
+            margin-bottom: 2px;
+        }
+
+        .song-title {
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 900;
+            text-shadow: 3px 3px 6px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.5);
+            line-height: 1.1;
+        }
+    </style>
+</head>
+<body>
+    <div id="info-box">
+        <span id="display-user" class="requested-by">WAITING...</span>
+        <span id="display-title" class="song-title">READY FOR REQUESTS</span>
+    </div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        database.ref('currentlyPlaying').on('value', snapshot => {
+            const data = snapshot.val();
+            if (data) {
+                document.getElementById('display-title').innerText = data.title;
+                document.getElementById('display-user').innerText = `REQUESTED BY: ${data.user}`;
+            }
+        });
+    </script>
+</body>
+</html>
