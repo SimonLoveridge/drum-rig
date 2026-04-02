@@ -270,13 +270,9 @@
                 database.ref('queue').once('value', snap => {
                     const currentCount = snap.numChildren();
                     const songs = [
-                        {id:'_Q9Ss5zZU4k',title:'As I Am', user: 'System'},
-                        {id:'PqKZFSZ_6yU',title:'This Dying Soul', user: 'System'},
-                        {id:'P9Lnan8t0v8',title:'Endless Sacrifice', user: 'System'},
-                        {id:'rS4v6p_kI6E',title:'Honor Thy Father', user: 'System'},
-                        {id:'_f_vV6vW6mI',title:'Vacant', user: 'System'},
-                        {id:'qV8v8L8P8-Y',title:'Stream of Consciousness', user: 'System'},
-                        {id:'2u788fU070Q',title:'In the Name of God', user: 'System'}
+                        {id:'_Q9Ss5zZU4k',title:'As I Am', user: 'Mike_Portnoy'},
+                        {id:'PqKZFSZ_6yU',title:'This Dying Soul', user: 'John_Petrucci'},
+                        {id:'P9Lnan8t0v8',title:'Endless Sacrifice', user: 'Jordan_Rudess'}
                     ];
                     songs.forEach((s, index) => {
                         database.ref('queue').push({ ...s, sortOrder: currentCount + index });
