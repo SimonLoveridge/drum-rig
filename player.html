@@ -6,112 +6,154 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
-        /* OBS OVERLAY STYLING */
+        :root {
+            --widget-width: 640px; 
+            --accent: #00ffcc;
+            --bg-dark: rgba(15, 15, 15, 0.95);
+        }
+
         body {
             margin: 0;
             padding: 20px;
             overflow: hidden;
-            background-color: transparent; /* Essential for OBS */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: transparent; 
+            font-family: 'Segoe UI', system-ui, sans-serif;
             color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); /* Makes text readable over any background */
         }
 
-        #overlay-container {
+        #widget-stack {
+            display: flex;
+            flex-direction: column;
+            width: var(--widget-width);
+            gap: 10px; /* The padding between info and video */
+        }
+
+        /* NOW PLAYING BLOCK (Above Video) */
+        #info-card {
+            background: var(--bg-dark);
+            border-radius: 12px;
+            padding: 15px;
             display: flex;
             align-items: center;
-            gap: 20px;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 15px 25px;
-            border-radius: 15px;
-            border-left: 5px solid #00ffcc;
-            width: fit-content;
-            max-width: 600px;
-            animation: slideIn 0.5s ease-out;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(-100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            gap: 15px;
+            position: relative;
+            border: 1px solid #333;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            overflow: hidden;
         }
 
         #album-art {
-            width: 80px;
-            height: 80px;
-            border-radius: 10px;
+            width: 55px;
+            height: 55px;
+            border-radius: 8px;
             object-fit: cover;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            border: 1px solid #444;
+            flex-shrink: 0;
         }
 
-        .song-info {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
+        .text-container {
+            flex-grow: 1;
+            overflow: hidden;
         }
 
         #song-title {
-            font-size: 1.5rem;
-            font-weight: bold;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #fff;
+            display: block;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 400px;
+            margin-bottom: 2px;
         }
 
         #requester {
-            font-size: 1rem;
-            color: #00ffcc;
+            font-size: 0.95rem;
+            color: #aaa;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
-        .twitch-icon {
-            color: #9146ff;
+        #user-name {
+            color: var(--accent);
+            font-weight: bold;
         }
 
-        /* HIDDEN PLAYER (Keeps Audio) */
-        #player-wrapper {
+        .twitch-icon { color: #9146ff; }
+
+        /* PROGRESS BAR (Inside Info Card) */
+        #progress-wrap {
             position: absolute;
-            top: -9999px; /* Moves video off-screen but keeps it active */
-            left: -9999px;
-        }
-
-        /* VISUAL PROGRESS BAR */
-        #progress-container {
+            bottom: 0;
+            left: 0;
             width: 100%;
-            height: 4px;
-            background: rgba(255,255,255,0.2);
-            margin-top: 8px;
-            border-radius: 2px;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
         }
 
         #progress-fill {
             height: 100%;
-            background: #00ffcc;
+            background: var(--accent);
             width: 0%;
             transition: width 0.5s linear;
+            box-shadow: 0 0 8px var(--accent);
         }
+
+        /* VIDEO CONTAINER */
+        #video-frame {
+            width: var(--widget-width);
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        #player {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* PAUSE STATE INDICATOR */
+        #pause-indicator {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+        #pause-indicator i { font-size: 3rem; color: white; opacity: 0.6; }
     </style>
 </head>
 <body>
 
-    <div id="overlay-container">
-        <img id="album-art" src="" alt="">
-        <div class="song-info">
-            <div id="song-title">Waiting for Request...</div>
-            <div id="requester">
-                <i class="fab fa-twitch twitch-icon"></i> 
-                <span id="user-name">Standby</span>
+    <div id="widget-stack">
+        <div id="info-card">
+            <img id="album-art" src="https://i.ytimg.com/vi/placeholder/mqdefault.jpg">
+            <div class="text-container">
+                <span id="song-title">Waiting for Request...</span>
+                <div id="requester">
+                    <i class="fab fa-twitch twitch-icon"></i> 
+                    Requested by <span id="user-name">Standby</span>
+                </div>
             </div>
-            <div id="progress-container">
+            <div id="progress-wrap">
                 <div id="progress-fill"></div>
             </div>
         </div>
-    </div>
 
-    <div id="player-wrapper">
-        <div id="player"></div>
+        <div id="video-frame">
+            <div id="player"></div>
+            <div id="pause-indicator">
+                <i class="fas fa-pause"></i>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -126,59 +168,64 @@
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
-                height: '360',
-                width: '640',
-                playerVars: { 'autoplay': 1, 'controls': 0, 'disablekb': 1 },
-                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
+                height: '100%',
+                width: '100%',
+                playerVars: { 
+                    'autoplay': 1, 
+                    'controls': 0, 
+                    'disablekb': 1,
+                    'modestbranding': 1,
+                    'rel': 0
+                },
+                events: { 
+                    'onReady': onPlayerReady, 
+                    'onStateChange': onPlayerStateChange 
+                }
             });
         }
 
         function onPlayerReady(event) {
-            // Listen for Song Changes
             database.ref('currentlyPlaying').on('value', snap => {
                 const data = snap.val();
-                if (data) {
+                if (data && data.id) {
                     player.loadVideoById(data.id);
                     document.getElementById('song-title').innerText = data.title;
                     document.getElementById('user-name').innerText = data.user;
                     document.getElementById('album-art').src = `https://i.ytimg.com/vi/${data.id}/mqdefault.jpg`;
-                    
-                    // Restart Animation
-                    const container = document.getElementById('overlay-container');
-                    container.style.animation = 'none';
-                    container.offsetHeight; 
-                    container.style.animation = null;
                 }
             });
 
-            // Listen for Remote Controls
             database.ref('controls').limitToLast(1).on('child_added', snap => {
                 const cmd = snap.val();
                 if (!cmd || Date.now() - cmd.ts > 5000) return;
-
                 if (cmd.action === 'play') player.playVideo();
                 if (cmd.action === 'pause') player.pauseVideo();
                 if (cmd.action === 'seek') player.seekTo(cmd.value);
                 if (cmd.action === 'mute') player.isMuted() ? player.unMute() : player.mute();
             });
 
-            // Sync Time Back to Firebase (for the Remote progress bar)
             setInterval(() => {
                 if (player && player.getCurrentTime) {
                     const current = player.getCurrentTime();
                     const total = player.getDuration();
-                    database.ref('playbackTime').set({ current, total });
-                    
-                    // Update Overlay Progress Bar
-                    const percent = (current / total) * 100;
-                    document.getElementById('progress-fill').style.width = percent + "%";
+                    if (total > 0) {
+                        database.ref('playbackTime').set({ current, total });
+                        document.getElementById('progress-fill').style.width = (current / total * 100) + "%";
+                    }
                 }
             }, 1000);
         }
 
         function onPlayerStateChange(event) {
             let state = "paused";
-            if (event.data == YT.PlayerState.PLAYING) state = "playing";
+            const indicator = document.getElementById('pause-indicator');
+            
+            if (event.data == YT.PlayerState.PLAYING) {
+                state = "playing";
+                indicator.style.display = "none";
+            } else {
+                indicator.style.display = "flex";
+            }
             database.ref('playerStatus').set(state);
         }
     </script>
