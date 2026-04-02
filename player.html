@@ -1,99 +1,121 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Drum Player - Capture Source</title>
+    <title>Drum Player - Framed Source</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         :root { --accent: #00ffcc; }
-        body { margin: 0; padding: 0; background: #000; overflow: hidden; }
         
+        body { 
+            margin: 0; 
+            padding: 20px; /* Padding so the border isn't touching the browser edge */
+            background: #000; 
+            overflow: hidden; 
+        }
+
         #video-container {
-            position: relative;
             width: 640px; 
             height: 360px;
             background: #000;
-            /* REMOVED: Rounded corners and box-shadow */
-            border-radius: 0; 
-            box-shadow: none;
-            overflow: hidden;
-            border: 1px solid #333; /* Subtle guide for cropping */
+            position: relative;
+            /* The 10px Solid White Border */
+            border: 10px solid #ffffff;
+            /* Ensures border is outside the 640x360 dimensions */
+            box-sizing: content-box; 
+            border-radius: 0;
         }
 
-        #player { width: 100%; height: 100%; }
+        #player { width: 100%; height: 100%; display: block; }
 
+        /* Progress bar sits inside the bottom of the video, inside the border */
         #progress-container {
-            position: absolute;
-            bottom: 0;
+            position: absolute; 
+            bottom: 0; 
             left: 0;
-            width: 100%;
-            height: 4px;
-            background: rgba(0,0,0,0.5);
+            width: 100%; 
+            height: 6px;
+            background: rgba(0,0,0,0.6);
+            z-index: 10;
         }
 
         #progress-fill {
-            height: 100%;
+            height: 100%; 
             width: 0%;
             background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
+            box-shadow: 0 0 12px var(--accent);
             transition: width 0.5s linear;
         }
     </style>
 </head>
 <body>
+
     <div id="video-container">
         <div id="player"></div>
-        <div id="progress-container"><div id="progress-fill"></div></div>
+        <div id="progress-container">
+            <div id="progress-fill"></div>
+        </div>
     </div>
 
     <script>
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-
         let player;
+
         const tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         document.head.appendChild(tag);
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
-                height: '360', width: '640', videoId: '',
-                playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0, 'disablekb': 1 },
-                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
-            });
-        }
+                height: '360',
+                width: '640',
+                videoId: '',
+                playerVars: { 
+                    'autoplay': 1, 
+                    'controls': 0, 
+                    'modestbranding': 1, 
+                    'rel': 0, 
+                    'disablekb': 1,
+                    'iv_load_policy': 3 
+                },
+                events: {
+                    'onReady': (e) => {
+                        // Song Sync
+                        database.ref('currentlyPlaying').on('value', s => {
+                            const val = s.val();
+                            if(val) { 
+                                player.loadVideoById(val.id); 
+                                player.playVideo(); 
+                            }
+                        });
 
-        function onPlayerReady(event) {
-            database.ref('currentlyPlaying').on('value', snapshot => {
-                const data = snapshot.val();
-                if (data) { player.loadVideoById(data.id); player.playVideo(); }
-            });
+                        // Remote Controls
+                        database.ref('controls').on('child_added', s => {
+                            const d = s.val(); if(!d) return;
+                            if(d.action==='play') player.playVideo();
+                            if(d.action==='pause') player.pauseVideo();
+                            if(d.action==='seek') player.seekTo(d.value);
+                            if(d.action==='mute') player.isMuted() ? player.unMute() : player.mute();
+                            s.ref.remove();
+                        });
 
-            database.ref('controls').on('child_added', snapshot => {
-                const data = snapshot.val();
-                if (!data || !player) return;
-                switch(data.action) {
-                    case 'play': player.playVideo(); break;
-                    case 'pause': player.pauseVideo(); break;
-                    case 'seek': player.seekTo(data.value); break;
-                    case 'mute': player.isMuted() ? player.unMute() : player.mute(); break;
+                        // Heartbeat
+                        setInterval(() => {
+                            if(player && player.getCurrentTime && player.getDuration) {
+                                const cur = player.getCurrentTime();
+                                const dur = player.getDuration();
+                                database.ref('playbackTime').set({ current: cur, total: dur });
+                                document.getElementById('progress-fill').style.width = ((cur/dur)*100) + "%";
+                            }
+                        }, 1000);
+                    },
+                    'onStateChange': (e) => { 
+                        database.ref('playerStatus').set(e.data == 1 ? "playing" : "paused"); 
+                    }
                 }
-                snapshot.ref.remove();
             });
-
-            setInterval(() => {
-                if (player && player.getCurrentTime) {
-                    const current = player.getCurrentTime();
-                    const total = player.getDuration();
-                    database.ref('playbackTime').set({ current, total });
-                    document.getElementById('progress-fill').style.width = ((current/total)*100) + "%";
-                }
-            }, 1000);
-        }
-
-        function onPlayerStateChange(event) {
-            database.ref('playerStatus').set(event.data == 1 ? "playing" : "paused");
         }
     </script>
 </body>
