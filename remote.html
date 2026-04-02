@@ -8,56 +8,84 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        :root { --accent: #00ffcc; --card-bg: #1a1a1a; --undo-color: #ffcc00; --twitch: #9146ff; --danger: #ff4444; }
+        :root { --accent: #00ffcc; --card-bg: #1a1a1a; --undo-color: #ffcc00; --danger: #ff4444; }
         
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; touch-action: manipulation; box-sizing: border-box; }
         
-        body { background: #0a0a0a; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px; margin: 0; overflow-x: hidden; }
+        body { background: #0a0a0a; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
 
         /* AUTH SCREEN */
-        #lock-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        #lock-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index: 10000; display:flex; flex-direction:column; align-items:center; justify-content:center; }
         .pin-display { font-size: 3.5rem; letter-spacing: 15px; color: var(--accent); margin-bottom: 30px; height: 80px; font-family: monospace; display: flex; align-items: center; justify-content: center; }
-        
         .numpad { display: grid; grid-template-columns: repeat(3, 90px); gap: 20px; }
-        .num-btn { width: 90px; height: 90px; border-radius: 50%; border: 2px solid #222; background: #111; color: white; font-size: 2.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.1s; }
+        .num-btn { width: 90px; height: 90px; border-radius: 50%; border: 2px solid #222; background: #111; color: white; font-size: 2.2rem; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .num-btn:active { background: var(--accent); color: black; transform: scale(0.9); }
 
-        #main-content { display: none; max-width: 900px; margin: 0 auto; padding-bottom: 50px; }
+        #main-content { display: none; }
 
-        /* DASHBOARD */
-        .dashboard-card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 25px; border: 2px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .track-info { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; text-align: center; }
-        .active-title { font-size: 1.6rem; font-weight: 900; color: #fff; margin: 0; }
+        /* STICKY HEADER CONTROLS */
+        .sticky-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 999;
+            background: #0a0a0a;
+            padding: 10px;
+            border-bottom: 2px solid #333;
+        }
 
-        .split-controls { display: flex; gap: 15px; align-items: stretch; margin-bottom: 20px; }
-        .thumb-box { flex: 1; border-radius: 12px; overflow: hidden; border: 2px solid #333; background: #000; display: flex; align-items: center; justify-content: center; min-height: 140px; }
+        .dashboard-card { 
+            background: var(--card-bg); 
+            border-radius: 12px; 
+            padding: 15px; 
+            border: 2px solid #444; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .track-info { margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 8px; text-align: center; }
+        
+        /* Updated Bigger & Whiter Text */
+        .active-title { font-size: 1.8rem; font-weight: 900; color: #fff; margin: 0; line-height: 1.2; }
+        #active-user { color: #ffffff !important; font-size: 1.1rem; font-weight: 600; margin-top: 4px; opacity: 0.9; }
+
+        .split-controls { display: flex; gap: 12px; align-items: stretch; margin-bottom: 12px; }
+        .thumb-box { flex: 1; border-radius: 8px; overflow: hidden; border: 1px solid #333; background: #000; display: flex; align-items: center; justify-content: center; min-height: 100px; max-width: 180px; }
         #active-thumb { width: 100%; height: 100%; object-fit: cover; }
 
-        .btn-stack { flex: 1; display: flex; flex-direction: column; gap: 10px; }
-        .main-trigger { flex: 2; background: var(--accent); color: black; border: none; border-radius: 12px; font-size: 3rem; display: flex; align-items: center; justify-content: center; }
+        .btn-stack { flex: 2; display: flex; flex-direction: column; gap: 8px; }
+        .main-trigger { flex: 2; background: var(--accent); color: black; border: none; border-radius: 10px; font-size: 2.5rem; display: flex; align-items: center; justify-content: center; }
         
-        .secondary-actions { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-        .btn-action { background: #333; color: white; border: none; border-radius: 10px; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; min-height: 55px; }
+        .secondary-actions { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .btn-action { background: #333; color: white; border: none; border-radius: 8px; font-size: 1.3rem; display: flex; align-items: center; justify-content: center; min-height: 50px; }
         .btn-action.undo.active { color: var(--undo-color); border: 1px solid var(--undo-color); }
 
-        /* PROGRESS */
-        .time-labels { display: flex; justify-content: space-between; font-family: monospace; color: #888; font-size: 1rem; margin-bottom: 8px; }
-        #progress-bar { width: 100%; height: 45px; accent-color: var(--accent); cursor: pointer; }
+        .progress-area { padding-top: 5px; }
+        .time-labels { display: flex; justify-content: space-between; font-family: monospace; color: #aaa; font-size: 1rem; margin-bottom: 5px; }
+        #progress-bar { width: 100%; height: 40px; accent-color: var(--accent); cursor: pointer; }
 
-        /* QUEUE LIST */
-        .queue-item { background: #111; padding: 15px; margin: 12px 0; border-radius: 12px; display: flex; align-items: center; gap: 15px; border: 2px solid #555; }
-        .drag-handle { width: 65px; height: 65px; background: #222; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 2rem; cursor: grab; }
+        /* SCROLLABLE QUEUE AREA */
+        .content-scroll {
+            margin-top: 340px; /* Adjust based on header height */
+            padding: 15px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .queue-item { background: #111; padding: 12px; margin: 10px 0; border-radius: 10px; display: flex; align-items: center; gap: 12px; border: 2px solid #555; }
+        .drag-handle { width: 50px; height: 50px; background: #222; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 1.5rem; cursor: grab; }
         .song-details { flex-grow: 1; overflow: hidden; }
-        .song-title { font-weight: bold; font-size: 1.2rem; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-title { font-weight: bold; font-size: 1.1rem; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        .play-now { background: #222; color: var(--accent); border: 1px solid var(--accent); padding: 12px 20px; border-radius: 8px; font-weight: bold; font-size: 1rem; }
-        .trash { color: var(--danger); font-size: 1.6rem; border: none; background: none; padding: 0 10px; }
+        .play-now { background: #222; color: var(--accent); border: 1px solid var(--accent); padding: 10px 15px; border-radius: 6px; font-weight: bold; }
+        .trash { color: var(--danger); font-size: 1.4rem; border: none; background: none; padding: 0 8px; }
 
-        /* FOOTER */
-        .footer-tools { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
-        .btn-debug { background: #1a1a1a; color: var(--accent); border: 1px solid var(--accent); padding: 20px; border-radius: 12px; font-size: 1.1rem; font-weight: bold; }
-        .btn-danger-wide { width: 100%; padding: 25px; background: #201010; color: var(--danger); border: 2px solid var(--danger); border-radius: 12px; font-weight: bold; font-size: 1.1rem; }
-        .btn-danger-wide.confirming { background: var(--danger); color: black; }
+        .footer-tools { margin-top: 30px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px; }
+        .btn-debug { background: #1a1a1a; color: var(--accent); border: 1px solid var(--accent); padding: 15px; border-radius: 10px; font-weight: bold; }
+        .btn-danger-wide { width: 100%; padding: 20px; background: #201010; color: var(--danger); border: 2px solid var(--danger); border-radius: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -73,33 +101,37 @@
     </div>
 
     <div id="main-content">
-        <div class="dashboard-card">
-            <div class="track-info">
-                <div id="active-title" class="active-title">Waiting...</div>
-                <div id="active-user" style="color:#aaa; margin-top:5px;">System Ready</div>
-            </div>
-            <div class="split-controls">
-                <div class="thumb-box"><img id="active-thumb" src=""></div>
-                <div class="btn-stack">
-                    <button class="main-trigger" onclick="togglePlayback()"><i id="toggle-icon" class="fas fa-play"></i></button>
-                    <div class="secondary-actions">
-                        <button class="btn-action" onclick="sendControl('mute')"><i class="fas fa-volume-mute"></i></button>
-                        <button id="undo-btn" class="btn-action undo" onclick="handleUndo()"><i class="fas fa-undo"></i></button>
-                        <button class="btn-action" onclick="skipToNext()"><i class="fas fa-forward"></i></button>
+        <header class="sticky-header">
+            <div class="dashboard-card">
+                <div class="track-info">
+                    <div id="active-title" class="active-title">System Standby</div>
+                    <div id="active-user">READY FOR REQUESTS</div>
+                </div>
+                <div class="split-controls">
+                    <div class="thumb-box"><img id="active-thumb" src=""></div>
+                    <div class="btn-stack">
+                        <button class="main-trigger" onclick="togglePlayback()"><i id="toggle-icon" class="fas fa-play"></i></button>
+                        <div class="secondary-actions">
+                            <button class="btn-action" onclick="sendControl('mute')"><i class="fas fa-volume-mute"></i></button>
+                            <button id="undo-btn" class="btn-action undo" onclick="handleUndo()"><i class="fas fa-undo"></i></button>
+                            <button class="btn-action" onclick="skipToNext()"><i class="fas fa-forward"></i></button>
+                        </div>
                     </div>
                 </div>
+                <div class="progress-area">
+                    <div class="time-labels"><span id="time-current">0:00</span><span id="time-total">0:00</span></div>
+                    <input type="range" id="progress-bar" min="0" max="100" value="0" onchange="seekVideo(this.value)">
+                </div>
             </div>
-            <div class="progress-area">
-                <div class="time-labels"><span id="time-current">0:00</span><span id="time-total">0:00</span></div>
-                <input type="range" id="progress-bar" min="0" max="100" value="0" onchange="seekVideo(this.value)">
-            </div>
-        </div>
+        </header>
 
-        <div id="queue-list"></div>
-        
-        <div class="footer-tools">
-            <button class="btn-debug" onclick="populateQueue()">LOAD SAMPLE PLAYLIST</button>
-            <button id="clear-btn" class="btn-danger-wide" onclick="clearQueue()">CLEAR ALL QUEUE</button>
+        <div class="content-scroll">
+            <div id="queue-list"></div>
+            
+            <div class="footer-tools">
+                <button class="btn-debug" onclick="populateQueue()">LOAD SAMPLES</button>
+                <button id="clear-btn" class="btn-danger-wide" onclick="clearQueue()">CLEAR ALL QUEUE</button>
+            </div>
         </div>
     </div>
 
@@ -132,9 +164,7 @@
             database = firebase.database();
             let totalT = 0;
 
-            Sortable.create(document.getElementById('queue-list'), {
-                animation: 150, handle: '.drag-handle'
-            });
+            Sortable.create(document.getElementById('queue-list'), { animation: 150, handle: '.drag-handle' });
 
             database.ref('playerStatus').on('value', s => {
                 currentPlayerState = s.val() || "paused";
@@ -156,7 +186,7 @@
                 if (d) {
                     currentSongState = d;
                     document.getElementById('active-title').innerText = d.title;
-                    document.getElementById('active-user').innerText = `Requested by ${d.user}`;
+                    document.getElementById('active-user').innerText = `REQUESTED BY: ${d.user}`;
                     document.getElementById('active-thumb').src = `https://i.ytimg.com/vi/${d.id}/mqdefault.jpg`;
                 }
             });
@@ -166,7 +196,7 @@
                 s.forEach(c => {
                     const item = c.val();
                     const div = document.createElement('div');
-                    div.className = 'queue-item'; div.setAttribute('data-key', c.key);
+                    div.className = 'queue-item';
                     div.innerHTML = `
                         <div class="drag-handle"><i class="fas fa-bars"></i></div>
                         <div class="song-details"><span class="song-title">${item.title}</span><span style="color:#888">by ${item.user}</span></div>
@@ -186,10 +216,7 @@
                 document.getElementById('undo-btn').classList.add('active');
                 database.ref('currentlyPlaying').set({ ...item, ts: Date.now() });
                 database.ref('queue').child(k).remove();
-                setTimeout(() => {
-                    sendControl('pause');
-                    sendControl('seek', 0);
-                }, 350);
+                setTimeout(() => { sendControl('pause'); sendControl('seek', 0); }, 350);
             };
 
             window.deleteTrack = (k, item) => {
@@ -200,41 +227,25 @@
 
             window.skipToNext = () => {
                 database.ref('queue').orderByChild('addedAt').limitToFirst(1).once('value', s => {
-                    if (s.exists()) {
-                        s.forEach(c => { loadTrack(c.key, c.val()); });
-                    }
+                    if (s.exists()) { s.forEach(c => { loadTrack(c.key, c.val()); }); }
                 });
             };
 
             window.clearQueue = () => {
                 const btn = document.getElementById('clear-btn');
                 if (!btn.classList.contains('confirming')) {
-                    btn.classList.add('confirming'); btn.innerText = "ARE YOU SURE?";
-                    clearConfirmTimer = setTimeout(() => {
-                        btn.classList.remove('confirming'); btn.innerText = "CLEAR ALL QUEUE";
-                    }, 3000);
+                    btn.classList.add('confirming'); btn.innerText = "CONFIRM CLEAR?";
+                    clearConfirmTimer = setTimeout(() => { btn.classList.remove('confirming'); btn.innerText = "CLEAR ALL QUEUE"; }, 3000);
                 } else {
-                    clearTimeout(clearConfirmTimer);
                     database.ref('queue').remove();
-                    btn.classList.remove('confirming'); btn.innerText = "WIPED!";
+                    btn.innerText = "WIPED!";
                     setTimeout(() => btn.innerText = "CLEAR ALL QUEUE", 2000);
                 }
             };
 
             window.populateQueue = () => {
-                const samples = [
-                    { id: "BE9CXWV1alg", title: "Limp Bizkit - My Generation", user: "Sample" },
-                    { id: "eVTXPUF4Oz4", title: "Linkin Park - In The End", user: "Sample" },
-                    { id: "9d4ui9q7eDM", title: "Megadeth - Holy Wars", user: "Sample" },
-                    { id: "8Ik9qECIWgc", title: "Dream Theater - Dance of Eternity", user: "Sample" },
-                    { id: "2ti7MRMy8BA", title: "Turtles in Time - Shell-Shock", user: "Sample" },
-                    { id: "TAqZb52sgpU", title: "Alice In Chains - Man in the Box", user: "Sample" },
-                    { id: "jdWhJcrrjQs", title: "Architects - Animals", user: "Sample" },
-                    { id: "BiP0FpY88E4", title: "Electric Callboy - Elevator Operator", user: "Sample" }
-                ];
-                samples.forEach((s, i) => {
-                    database.ref('queue').push({ ...s, addedAt: Date.now() + (i * 10) });
-                });
+                const samples = [{ id: "BE9CXWV1alg", title: "Limp Bizkit - My Generation", user: "Sample" }, { id: "eVTXPUF4Oz4", title: "Linkin Park - In The End", user: "Sample" }];
+                samples.forEach((s, i) => { database.ref('queue').push({ ...s, addedAt: Date.now() + (i * 10) }); });
             };
 
             window.handleUndo = () => {
