@@ -9,60 +9,64 @@
         
         body { 
             margin: 0; 
-            padding: 0; 
+            padding: 20px; /* Space for the label sitting on top */
             background: transparent; 
             overflow: hidden; 
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* VIDEO CONTAINER */
-        #video-container {
+        /* OUTER WRAPPER */
+        #stage-wrapper {
+            display: inline-block;
             position: relative;
-            width: 640px; /* Standard OBS window size, adjust as needed */
-            height: 360px;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        #player { width: 100%; height: 100%; }
-
-        /* TEXT OVERLAY - NO BACKGROUND */
-        #text-overlay {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            z-index: 10;
+        /* LABEL SITTING ON TOP OF VIDEO */
+        #request-label {
+            margin-bottom: 4px;
             pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .song-title {
             color: #ffffff;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 900;
-            text-transform: uppercase;
-            margin: 0;
-            /* High-contrast shadow for visibility on any background */
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            display: block;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
 
         .requested-by {
             color: var(--accent);
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
-            margin-top: 2px;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+            display: block;
+            margin-bottom: 2px;
         }
 
-        /* INTEGRATED PROGRESS BAR */
+        /* VIDEO CONTAINER */
+        #video-container {
+            position: relative;
+            width: 640px; 
+            height: 360px;
+            background: #000;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border: 1px solid #333;
+        }
+
+        #player { width: 100%; height: 100%; }
+
+        /* INTEGRATED PROGRESS BAR (At the very bottom of video) */
         #progress-container {
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 4px; /* Thin and subtle */
-            background: rgba(255,255,255,0.1);
+            height: 4px;
+            background: rgba(0,0,0,0.5);
             z-index: 11;
         }
 
@@ -77,16 +81,17 @@
 </head>
 <body>
 
-    <div id="video-container">
-        <div id="text-overlay">
-            <div id="display-title" class="song-title">STARTING SOON</div>
-            <div id="display-user" class="requested-by">WAITING FOR REQUESTS</div>
+    <div id="stage-wrapper">
+        <div id="request-label">
+            <span id="display-user" class="requested-by">WAITING FOR REQUESTS</span>
+            <span id="display-title" class="song-title">STARTING SOON</span>
         </div>
         
-        <div id="player"></div>
-
-        <div id="progress-container">
-            <div id="progress-fill"></div>
+        <div id="video-container">
+            <div id="player"></div>
+            <div id="progress-container">
+                <div id="progress-fill"></div>
+            </div>
         </div>
     </div>
 
@@ -110,7 +115,8 @@
                     'controls': 0, 
                     'modestbranding': 1, 
                     'rel': 0, 
-                    'disablekb': 1 
+                    'disablekb': 1,
+                    'iv_load_policy': 3
                 },
                 events: {
                     'onReady': onPlayerReady,
@@ -120,7 +126,6 @@
         }
 
         function onPlayerReady(event) {
-            // Listen for Song Changes
             database.ref('currentlyPlaying').on('value', snapshot => {
                 const data = snapshot.val();
                 if (data) {
@@ -130,7 +135,6 @@
                 }
             });
 
-            // Listen for Controls
             database.ref('controls').on('child_added', snapshot => {
                 const data = snapshot.val();
                 if (!data || !player) return;
@@ -147,16 +151,14 @@
                 snapshot.ref.remove();
             });
 
-            // Heartbeat: Send time and status back to Remote
             setInterval(() => {
-                if (player && player.getCurrentTime) {
-                    database.ref('playbackTime').set({
-                        current: player.getCurrentTime(),
-                        total: player.getDuration()
-                    });
+                if (player && player.getCurrentTime && player.getDuration) {
+                    const current = player.getCurrentTime();
+                    const total = player.getDuration();
                     
-                    // Update the visual progress bar
-                    const percent = (player.getCurrentTime() / player.getDuration()) * 100;
+                    database.ref('playbackTime').set({ current, total });
+                    
+                    const percent = (current / total) * 100;
                     document.getElementById('progress-fill').style.width = percent + "%";
                 }
             }, 1000);
