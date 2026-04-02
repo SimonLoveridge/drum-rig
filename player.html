@@ -1,158 +1,185 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Drum Player - Stage Pro</title>
+    <title>Drum Request - OBS Overlay</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <script src="https://www.youtube.com/iframe_api"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background: #0a0a0a; color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; }
-        
-        #lock-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index: 9999; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-        .pin-display { font-size: 3rem; letter-spacing: 15px; color: #00ffcc; margin-bottom: 30px; height: 60px; }
-        .numpad { display: grid; grid-template-columns: repeat(3, 80px); gap: 20px; }
-        .num-btn { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #333; background: #111; color: white; font-size: 1.8rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.1s; }
-        .num-btn:active, .num-btn.active { background: #00ffcc; color: black; transform: scale(0.9); }
+        /* OBS OVERLAY STYLING */
+        body {
+            margin: 0;
+            padding: 20px;
+            overflow: hidden;
+            background-color: transparent; /* Essential for OBS */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); /* Makes text readable over any background */
+        }
 
-        #interaction-overlay { display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, #1a1a1a 0%, #050505 100%); z-index: 1000; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
-        .ready-text { font-size: 3.5rem; font-weight: 800; letter-spacing: 8px; color: #ffffff; text-transform: uppercase; }
-        .pulse-text { font-size: 1.2rem; color: #00ffcc; letter-spacing: 4px; text-transform: uppercase; animation: pulse-glow 2s infinite; }
-        @keyframes pulse-glow { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        #overlay-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px 25px;
+            border-radius: 15px;
+            border-left: 5px solid #00ffcc;
+            width: fit-content;
+            max-width: 600px;
+            animation: slideIn 0.5s ease-out;
+        }
 
-        #status { font-size: 24px; color: #00ffcc; margin: 40px 0 20px; text-transform: uppercase; letter-spacing: 2px; }
-        #player-container { border: 5px solid #222; display: inline-block; border-radius: 12px; overflow: hidden; }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        #album-art {
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            object-fit: cover;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+
+        .song-info {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        #song-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 400px;
+        }
+
+        #requester {
+            font-size: 1rem;
+            color: #00ffcc;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .twitch-icon {
+            color: #9146ff;
+        }
+
+        /* HIDDEN PLAYER (Keeps Audio) */
+        #player-wrapper {
+            position: absolute;
+            top: -9999px; /* Moves video off-screen but keeps it active */
+            left: -9999px;
+        }
+
+        /* VISUAL PROGRESS BAR */
+        #progress-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            margin-top: 8px;
+            border-radius: 2px;
+        }
+
+        #progress-fill {
+            height: 100%;
+            background: #00ffcc;
+            width: 0%;
+            transition: width 0.5s linear;
+        }
     </style>
 </head>
 <body>
-    <div id="lock-screen">
-        <div style="color: #444; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px;">Enter Access Key</div>
-        <div id="pin-dots" class="pin-display"></div>
-        <div class="numpad">
-            <div class="num-btn" id="btn-1" onclick="pressNum('1')">1</div><div class="num-btn" id="btn-2" onclick="pressNum('2')">2</div><div class="num-btn" id="btn-3" onclick="pressNum('3')">3</div>
-            <div class="num-btn" id="btn-4" onclick="pressNum('4')">4</div><div class="num-btn" id="btn-5" onclick="pressNum('5')">5</div><div class="num-btn" id="btn-6" onclick="pressNum('6')">6</div>
-            <div class="num-btn" id="btn-7" onclick="pressNum('7')">7</div><div class="num-btn" id="btn-8" onclick="pressNum('8')">8</div><div class="num-btn" id="btn-9" onclick="pressNum('9')">9</div>
-            <div class="num-btn clear" id="btn-C" onclick="pressNum('C')" style="color:#ff4444">C</div><div class="num-btn" id="btn-0" onclick="pressNum('0')">0</div><div class="num-btn" id="btn-D" onclick="pressNum('D')"><i class="fas fa-backspace"></i></div>
+
+    <div id="overlay-container">
+        <img id="album-art" src="" alt="">
+        <div class="song-info">
+            <div id="song-title">Waiting for Request...</div>
+            <div id="requester">
+                <i class="fab fa-twitch twitch-icon"></i> 
+                <span id="user-name">Standby</span>
+            </div>
+            <div id="progress-container">
+                <div id="progress-fill"></div>
+            </div>
         </div>
     </div>
 
-    <div id="interaction-overlay" onclick="enableAudio()">
-        <div class="ready-text">READY FOR SESSION</div>
-        <div class="pulse-text">Tap to Start Rig</div>
+    <div id="player-wrapper">
+        <div id="player"></div>
     </div>
 
-    <div id="status">WAITING FOR AUTH...</div>
-    <div id="player-container"><div id="player"></div></div>
-
     <script>
-        const USE_LOCK = true; // SET TO FALSE TO REMOVE PIN SCREEN
-        const SECRET_CODE = "123456"; 
-        
-        let currentInput = "";
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
-        var player, database, timeUpdater;
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-        // KEYBOARD LISTENER
-        window.addEventListener('keydown', (e) => {
-            if (document.getElementById('lock-screen').style.display === 'none') return;
-            
-            if (e.key >= '0' && e.key <= '9') {
-                pressNum(e.key);
-                visualFeedback(e.key);
-            } else if (e.key === 'Backspace') {
-                pressNum('D');
-                visualFeedback('D');
-            } else if (e.key === 'Escape') {
-                pressNum('C');
-                visualFeedback('C');
-            }
-        });
-
-        function visualFeedback(id) {
-            const btn = document.getElementById('btn-' + id);
-            if (btn) {
-                btn.classList.add('active');
-                setTimeout(() => btn.classList.remove('active'), 100);
-            }
-        }
-
-        function pressNum(n) {
-            if (n === 'C') currentInput = "";
-            else if (n === 'D') currentInput = currentInput.slice(0, -1);
-            else if (currentInput.length < 6) currentInput += n;
-            
-            document.getElementById('pin-dots').innerText = "•".repeat(currentInput.length);
-            
-            if (currentInput === SECRET_CODE) {
-                localStorage.setItem('rig_access', 'true');
-                unlock();
-            }
-        }
-
-        function unlock() {
-            document.getElementById('lock-screen').style.display = 'none';
-            document.getElementById('interaction-overlay').style.display = 'flex';
-            connectFirebase();
-        }
-
-        if (!USE_LOCK || localStorage.getItem('rig_access') === 'true') {
-            setTimeout(unlock, 100);
-        }
+        let player;
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.getElementsByTagName('head')[0].appendChild(tag);
 
         function onYouTubeIframeAPIReady() {
-            player = new YT.Player('player', { 
-                height: '360', width: '640', videoId: '', 
-                playerVars: { 'autoplay': 1, 'enablejsapi': 1, 'origin': window.location.origin },
+            player = new YT.Player('player', {
+                height: '360',
+                width: '640',
+                playerVars: { 'autoplay': 1, 'controls': 0, 'disablekb': 1 },
                 events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
             });
         }
 
-        function onPlayerReady() {
-            console.log("YouTube Player Ready");
-        }
-
-        function enableAudio() {
-            document.getElementById('interaction-overlay').style.display = 'none';
-            if (player?.playVideo) { 
-                player.playVideo(); 
-                setTimeout(() => player.pauseVideo(), 150); 
-            }
-        }
-
-        function connectFirebase() {
-            if (database) return; 
-            firebase.initializeApp(firebaseConfig);
-            database = firebase.database();
-            document.getElementById('status').innerText = "SYSTEM LIVE";
-
+        function onPlayerReady(event) {
+            // Listen for Song Changes
             database.ref('currentlyPlaying').on('value', snap => {
-                const song = snap.val();
-                if (song && player?.cueVideoById) {
-                    player.cueVideoById(song.id);
-                    document.getElementById('status').innerText = "READY: " + song.title;
+                const data = snap.val();
+                if (data) {
+                    player.loadVideoById(data.id);
+                    document.getElementById('song-title').innerText = data.title;
+                    document.getElementById('user-name').innerText = data.user;
+                    document.getElementById('album-art').src = `https://i.ytimg.com/vi/${data.id}/mqdefault.jpg`;
+                    
+                    // Restart Animation
+                    const container = document.getElementById('overlay-container');
+                    container.style.animation = 'none';
+                    container.offsetHeight; 
+                    container.style.animation = null;
                 }
             });
 
-            database.ref('controls').on('child_added', snap => {
-                const cmd = snap.val(); 
-                if (!cmd || !player) return;
-                if (cmd.action === 'pause') player.pauseVideo();
+            // Listen for Remote Controls
+            database.ref('controls').limitToLast(1).on('child_added', snap => {
+                const cmd = snap.val();
+                if (!cmd || Date.now() - cmd.ts > 5000) return;
+
                 if (cmd.action === 'play') player.playVideo();
-                if (cmd.action === 'seek') player.seekTo(cmd.value, true);
+                if (cmd.action === 'pause') player.pauseVideo();
+                if (cmd.action === 'seek') player.seekTo(cmd.value);
                 if (cmd.action === 'mute') player.isMuted() ? player.unMute() : player.mute();
-                database.ref('controls').child(snap.key).remove();
             });
+
+            // Sync Time Back to Firebase (for the Remote progress bar)
+            setInterval(() => {
+                if (player && player.getCurrentTime) {
+                    const current = player.getCurrentTime();
+                    const total = player.getDuration();
+                    database.ref('playbackTime').set({ current, total });
+                    
+                    // Update Overlay Progress Bar
+                    const percent = (current / total) * 100;
+                    document.getElementById('progress-fill').style.width = percent + "%";
+                }
+            }, 1000);
         }
 
         function onPlayerStateChange(event) {
-            if (!database) return;
-            const stateMap = { 1: "playing", 2: "paused" };
-            database.ref('playerStatus').set(stateMap[event.data] || "paused");
-            if (event.data == 1) {
-                timeUpdater = setInterval(() => {
-                    database.ref('playbackTime').set({ current: player.getCurrentTime(), total: player.getDuration() });
-                }, 1000);
-            } else { clearInterval(timeUpdater); }
+            let state = "paused";
+            if (event.data == YT.PlayerState.PLAYING) state = "playing";
+            database.ref('playerStatus').set(state);
         }
     </script>
 </body>
