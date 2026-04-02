@@ -8,20 +8,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background: #0a0a0a; color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; }
-        
-        /* LOCK SCREEN */
-        #lock-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        #lock-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#050505; z-index: 9999; display:flex; flex-direction:column; align-items:center; justify-content:center; }
         .pin-display { font-size: 3rem; letter-spacing: 15px; color: #00ffcc; margin-bottom: 30px; height: 60px; }
         .numpad { display: grid; grid-template-columns: repeat(3, 80px); gap: 20px; }
         .num-btn { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #333; background: #111; color: white; font-size: 1.8rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .num-btn:active { background: #00ffcc; color: black; }
-
-        /* START OVERLAY */
         #interaction-overlay { display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, #1a1a1a 0%, #050505 100%); z-index: 1000; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
         .ready-text { font-size: 3.5rem; font-weight: 800; letter-spacing: 8px; color: #ffffff; text-transform: uppercase; }
         .pulse-text { font-size: 1.2rem; color: #00ffcc; letter-spacing: 4px; text-transform: uppercase; animation: pulse-glow 2s infinite; }
         @keyframes pulse-glow { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-
         #status { font-size: 24px; color: #00ffcc; margin: 40px 0 20px; text-transform: uppercase; letter-spacing: 2px; }
         #player-container { border: 5px solid #222; display: inline-block; border-radius: 12px; overflow: hidden; }
     </style>
@@ -43,11 +38,11 @@
         <div class="pulse-text">Tap to Start Rig</div>
     </div>
 
-    <div id="status">INITIALIZING...</div>
+    <div id="status">WAITING FOR AUTH...</div>
     <div id="player-container"><div id="player"></div></div>
 
     <script>
-        const SECRET_CODE = "596021"; // CHANGE YOUR PASSCODE HERE
+        const SECRET_CODE = "123456"; 
         let currentInput = "";
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
         var player, database, timeUpdater;
@@ -63,27 +58,38 @@
         function unlock() {
             document.getElementById('lock-screen').style.display = 'none';
             document.getElementById('interaction-overlay').style.display = 'flex';
-            connect();
+            connectFirebase();
         }
 
-        if (localStorage.getItem('rig_access') === 'true') unlock();
-
+        // Initialize YT API immediately, regardless of lock
         function onYouTubeIframeAPIReady() {
-            player = new YT.Player('player', { height: '360', width: '640', videoId: '', 
-                playerVars: { 'autoplay': 1, 'enablejsapi': 1 },
-                events: { 'onStateChange': onPlayerStateChange }
+            player = new YT.Player('player', { 
+                height: '360', width: '640', videoId: '', 
+                playerVars: { 'autoplay': 1, 'enablejsapi': 1, 'origin': window.location.origin },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
             });
+        }
+
+        function onPlayerReady() {
+            console.log("YouTube Player Ready");
+            if (localStorage.getItem('rig_access') === 'true') unlock();
         }
 
         function enableAudio() {
             document.getElementById('interaction-overlay').style.display = 'none';
-            if (player?.playVideo) { player.playVideo(); setTimeout(() => player.pauseVideo(), 100); }
+            if (player?.playVideo) { 
+                player.playVideo(); 
+                setTimeout(() => player.pauseVideo(), 150); 
+            }
         }
 
-        function connect() {
+        function connectFirebase() {
+            if (database) return; // Prevent double init
             firebase.initializeApp(firebaseConfig);
             database = firebase.database();
             document.getElementById('status').innerText = "SYSTEM LIVE";
+
+            // Listen for current song
             database.ref('currentlyPlaying').on('value', snap => {
                 const song = snap.val();
                 if (song && player?.cueVideoById) {
@@ -91,16 +97,21 @@
                     document.getElementById('status').innerText = "READY: " + song.title;
                 }
             });
+
+            // Listen for controls
             database.ref('controls').on('child_added', snap => {
-                const cmd = snap.val(); if (!cmd || !player) return;
+                const cmd = snap.val(); 
+                if (!cmd || !player) return;
                 if (cmd.action === 'pause') player.pauseVideo();
                 if (cmd.action === 'play') player.playVideo();
                 if (cmd.action === 'seek') player.seekTo(cmd.value, true);
+                if (cmd.action === 'mute') player.isMuted() ? player.unMute() : player.mute();
                 database.ref('controls').child(snap.key).remove();
             });
         }
 
         function onPlayerStateChange(event) {
+            if (!database) return;
             const stateMap = { 1: "playing", 2: "paused" };
             database.ref('playerStatus').set(stateMap[event.data] || "paused");
             if (event.data == 1) {
