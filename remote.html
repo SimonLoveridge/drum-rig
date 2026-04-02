@@ -9,7 +9,10 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         :root { --accent: #00ffcc; --card-bg: #1a1a1a; --undo-color: #ffcc00; --twitch: #9146ff; --danger: #ff4444; }
+        
+        /* PREVENT SYSTEM INTERFERENCE */
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+        
         body { background: #0a0a0a; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px; margin: 0; }
 
         /* AUTH SCREEN */
@@ -22,7 +25,7 @@
         #main-content { display: none; max-width: 900px; margin: 0 auto; }
 
         /* DASHBOARD */
-        .dashboard-card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; }
+        .dashboard-card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .track-info { margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; text-align: center; }
         .active-title { font-size: 1.8rem; font-weight: 900; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .active-user { color: #aaa; font-weight: bold; font-size: 1.1rem; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; }
@@ -30,13 +33,16 @@
         .user-highlight { color: var(--accent); }
 
         .split-controls { display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; }
-        .thumb-box { flex: 1.2; border-radius: 12px; overflow: hidden; border: 2px solid #333; background: #000; min-height: 180px; }
+        .thumb-box { flex: 1.2; border-radius: 12px; overflow: hidden; border: 2px solid #333; background: #000; display: flex; align-items: center; justify-content: center; min-height: 180px; }
         #active-thumb { width: 100%; height: 100%; object-fit: cover; }
 
         .btn-stack { flex: 1; display: flex; flex-direction: column; gap: 12px; }
         .main-trigger { flex: 2; background: var(--accent); color: black; border: none; border-radius: 12px; font-size: 3.5rem; display: flex; align-items: center; justify-content: center; }
+        .main-trigger:active { transform: scale(0.98); }
+        
         .secondary-actions { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         .btn-action { background: #333; color: white; border: none; border-radius: 10px; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; }
+        .btn-action.skip { background: #444; font-size: 2rem; }
         
         /* UNDO STATE */
         .btn-action.undo { color: #444; pointer-events: none; transition: all 0.3s ease; }
@@ -46,7 +52,7 @@
         .time-labels { display: flex; justify-content: space-between; font-family: monospace; color: #888; font-size: 1.1rem; margin-bottom: 8px; }
         #progress-bar { width: 100%; height: 35px; accent-color: var(--accent); cursor: pointer; }
 
-        /* QUEUE */
+        /* QUEUE LIST */
         .queue-item { background: #181818; padding: 15px; margin: 8px 0; border-radius: 10px; display: flex; align-items: center; gap: 15px; border: 1px solid #282828; }
         .drag-handle { color: #444; font-size: 1.8rem; cursor: grab; }
         .song-details { flex-grow: 1; overflow: hidden; }
@@ -152,7 +158,7 @@
             database.ref('playbackTime').on('value', snap => {
                 const data = snap.val(); if (!data) return;
                 currentTotalTime = data.total;
-                currentPlayTime = data.current; // Track for undo
+                currentPlayTime = data.current; 
                 if (!document.getElementById('progress-bar').matches(':active')) {
                     document.getElementById('progress-bar').value = (data.current / data.total) * 100;
                 }
@@ -163,7 +169,7 @@
             database.ref('currentlyPlaying').on('value', snap => {
                 const data = snap.val();
                 if(data) {
-                    currentSongState = data; // Keep reference of current song
+                    currentSongState = data;
                     document.getElementById('active-title').innerText = data.title;
                     document.getElementById('active-user').innerHTML = `<i class="fab fa-twitch twitch-icon"></i> Request from: <span class="user-highlight">${data.user}</span>`;
                     document.getElementById('active-thumb').src = `https://i.ytimg.com/vi/${data.id}/mqdefault.jpg`;
@@ -192,7 +198,6 @@
             };
 
             window.loadTrack = (k, item) => {
-                // Save what was playing and where
                 setUndo({ type: 'swap', data: currentSongState, time: currentPlayTime });
                 database.ref('currentlyPlaying').set({ ...item, ts: Date.now() });
                 database.ref('queue').child(k).remove();
@@ -200,9 +205,7 @@
 
             window.skipToNext = () => {
                 database.ref('queue').orderByChild('sortOrder').limitToFirst(1).once('value', s => {
-                    if (s.exists()) {
-                        s.forEach(c => loadTrack(c.key, c.val()));
-                    }
+                    if (s.exists()) s.forEach(c => loadTrack(c.key, c.val()));
                 });
             };
             
@@ -222,37 +225,40 @@
 
             window.handleUndo = () => { 
                 if(!lastAction) return;
-
                 if(lastAction.type === 'clear') {
                     database.ref('queue').set(lastAction.data);
                 } 
                 else if(lastAction.type === 'delete') {
-                    database.ref('queue').push(lastAction.data);
+                    database.ref('queue').once('value', snap => {
+                        const endPos = snap.numChildren();
+                        database.ref('queue').push({ ...lastAction.data, sortOrder: endPos });
+                    });
                 } 
                 else if(lastAction.type === 'swap') {
-                    // Put current song back to queue top (if exists)
                     if(currentSongState) database.ref('queue').push({...currentSongState, sortOrder: -1});
-                    // Restore previous song
                     database.ref('currentlyPlaying').set(lastAction.data);
-                    // Seek to previous time
                     setTimeout(() => sendControl('seek', lastAction.time), 500);
                 }
-
                 lastAction = null; 
                 document.getElementById('undo-btn').classList.remove('active'); 
             };
 
             window.populateQueue = function() {
-                const songs = [
-                    {id:'_Q9Ss5zZU4k',title:'As I Am', user: 'System', sortOrder: 0},
-                    {id:'PqKZFSZ_6yU',title:'This Dying Soul', user: 'System', sortOrder: 1},
-                    {id:'P9Lnan8t0v8',title:'Endless Sacrifice', user: 'System', sortOrder: 2},
-                    {id:'rS4v6p_kI6E',title:'Honor Thy Father', user: 'System', sortOrder: 3},
-                    {id:'_f_vV6vW6mI',title:'Vacant', user: 'System', sortOrder: 4},
-                    {id:'qV8v8L8P8-Y',title:'Stream of Consciousness', user: 'System', sortOrder: 5},
-                    {id:'2u788fU070Q',title:'In the Name of God', user: 'System', sortOrder: 6}
-                ];
-                songs.forEach(s => database.ref('queue').push(s));
+                database.ref('queue').once('value', snap => {
+                    const currentCount = snap.numChildren();
+                    const songs = [
+                        {id:'_Q9Ss5zZU4k',title:'As I Am', user: 'System'},
+                        {id:'PqKZFSZ_6yU',title:'This Dying Soul', user: 'System'},
+                        {id:'P9Lnan8t0v8',title:'Endless Sacrifice', user: 'System'},
+                        {id:'rS4v6p_kI6E',title:'Honor Thy Father', user: 'System'},
+                        {id:'_f_vV6vW6mI',title:'Vacant', user: 'System'},
+                        {id:'qV8v8L8P8-Y',title:'Stream of Consciousness', user: 'System'},
+                        {id:'2u788fU070Q',title:'In the Name of God', user: 'System'}
+                    ];
+                    songs.forEach((s, index) => {
+                        database.ref('queue').push({ ...s, sortOrder: currentCount + index });
+                    });
+                });
             };
         }
     </script>
