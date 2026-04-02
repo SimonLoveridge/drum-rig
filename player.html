@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Drum Player - Stage Pro</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <style>
+        body { background: #0a0a0a; color: white; font-family: 'Segoe UI', Roboto, sans-serif; text-align: center; margin: 0; overflow: hidden; }
+        
+        /* Cinematic Start Overlay */
+        #interaction-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, #1a1a1a 0%, #050505 100%);
+            z-index: 1000; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; cursor: pointer;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .ready-text { 
+            font-size: 3.5rem; font-weight: 800; letter-spacing: 8px; 
+            color: #ffffff; margin-bottom: 10px; text-transform: uppercase;
+        }
+
+        .pulse-text { 
+            font-size: 1.2rem; color: #00ffcc; letter-spacing: 4px;
+            text-transform: uppercase; animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0% { opacity: 0.3; text-shadow: 0 0 0px #00ffcc; }
+            50% { opacity: 1; text-shadow: 0 0 15px #00ffcc; }
+            100% { opacity: 0.3; text-shadow: 0 0 0px #00ffcc; }
+        }
+
+        #status { font-size: 24px; color: #00ffcc; margin: 40px 0 20px; text-transform: uppercase; letter-spacing: 2px; }
+        #player-container { border: 5px solid #222; display: inline-block; border-radius: 12px; overflow: hidden; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+    <div id="interaction-overlay" onclick="enableAudio()">
+        <div class="ready-text">READY FOR SESSION</div>
+        <div class="pulse-text">Tap to Start Rig</div>
+    </div>
+
+    <div id="status">INITIALIZING...</div>
+    <div id="player-container"><div id="player"></div></div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
+        var player, database, timeUpdater;
+
+        window.onload = function() {
+            connect();
+        };
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '360', width: '640', videoId: '', 
+                playerVars: { 'autoplay': 1, 'origin': window.location.origin, 'enablejsapi': 1, 'controls': 1 },
+                events: { 'onStateChange': onPlayerStateChange }
+            });
+        }
+
+        function enableAudio() {
+            const overlay = document.getElementById('interaction-overlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 500);
+            
+            if (player && player.playVideo) {
+                player.playVideo(); 
+                setTimeout(() => player.pauseVideo(), 100); 
+            }
+        }
+
+        function connect() {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            document.getElementById('status').innerText = "SYSTEM LIVE";
+
+            database.ref('currentlyPlaying').on('value', (snapshot) => {
+                const song = snapshot.val();
+                if (song && player?.cueVideoById) {
+                    player.cueVideoById(song.id);
+                    document.getElementById('status').innerText = "TRACK READY: " + song.title;
+                    database.ref('playerStatus').set("paused");
+                }
+            });
+
+            database.ref('controls').on('child_added', (snapshot) => {
+                const cmd = snapshot.val();
+                if (!cmd || !player) return;
+                if (cmd.action === 'pause') player.pauseVideo();
+                if (cmd.action === 'play') player.playVideo();
+                if (cmd.action === 'mute') player.isMuted() ? player.unMute() : player.mute();
+                if (cmd.action === 'seek') player.seekTo(cmd.value, true);
+                database.ref('controls').child(snapshot.key).remove();
+            });
+        }
+
+        function onPlayerStateChange(event) {
+            const stateMap = { 1: "playing", 2: "paused", 5: "paused" }; 
+            database.ref('playerStatus').set(stateMap[event.data] || "paused");
+            if (event.data == YT.PlayerState.PLAYING) {
+                timeUpdater = setInterval(() => {
+                    database.ref('playbackTime').set({ current: player.getCurrentTime(), total: player.getDuration() });
+                }, 1000);
+            } else {
+                clearInterval(timeUpdater);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Drum Session - Live Queue</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root { --accent: #00ffcc; --bg: #0a0a0a; --card: #161616; --twitch: #9146ff; }
+        body { background: var(--bg); color: #eee; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 500px; }
+        .header { text-align: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { color: var(--accent); letter-spacing: 2px; text-transform: uppercase; font-size: 1.5rem; margin: 0; }
+        
+        .now-playing { background: #1a1a1a; border: 1px solid var(--accent); border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; }
+        .np-label { font-size: 0.7rem; color: var(--accent); text-transform: uppercase; font-weight: bold; }
+        .np-title { font-size: 1.4rem; font-weight: bold; display: block; margin: 5px 0; }
+        .np-user { font-size: 0.9rem; color: #888; }
+
+        .queue-item { background: var(--card); padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; border-left: 3px solid #333; }
+        .song-name { font-weight: bold; display: block; color: #fff; }
+        .user-name { font-size: 0.85rem; color: #aaa; }
+        .empty { text-align: center; color: #444; margin-top: 40px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"><h1>LIVE DRUM QUEUE</h1></div>
+        
+        <div id="now-playing-box" class="now-playing" style="display:none;">
+            <span class="np-label">CURRENTLY PERFORMING</span>
+            <span id="np-title" class="np-title"></span>
+            <span id="np-user" class="np-user"></span>
+        </div>
+
+        <div id="queue-list"></div>
+    </div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Sync "Now Playing"
+        db.ref('currentlyPlaying').on('value', snap => {
+            const data = snap.val();
+            if (data) {
+                document.getElementById('now-playing-box').style.display = 'block';
+                document.getElementById('np-title').innerText = data.title;
+                document.getElementById('np-user').innerText = "Requested by " + data.user;
+            } else {
+                document.getElementById('now-playing-box').style.display = 'none';
+            }
+        });
+
+        // Sync Queue
+        db.ref('queue').orderByChild('sortOrder').on('value', snap => {
+            const list = document.getElementById('queue-list');
+            list.innerHTML = "";
+            if (!snap.exists()) {
+                list.innerHTML = "<div class='empty'>No songs in queue. Type !sr in chat!</div>";
+                return;
+            }
+            snap.forEach(child => {
+                const item = child.val();
+                const div = document.createElement('div');
+                div.className = 'queue-item';
+                div.innerHTML = `<div><span class="song-name">${item.title}</span><span class="user-name">by ${item.user}</span></div>`;
+                list.appendChild(div);
+            });
+        });
+    </script>
+</body>
+</html>
