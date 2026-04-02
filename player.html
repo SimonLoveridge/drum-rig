@@ -1,32 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Drum Stream Overlay - Hands Free</title>
+    <title>Drum Player - Capture Source</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         :root { --accent: #00ffcc; }
-        body { margin: 0; padding: 25px; background: transparent; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        #stage-wrapper { display: inline-block; position: relative; }
-        #request-label { margin-bottom: 6px; pointer-events: none; text-transform: uppercase; }
-        .song-title { color: #ffffff; font-size: 24px; font-weight: 900; display: block; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
-        .requested-by { color: var(--accent); font-size: 14px; font-weight: 700; display: block; margin-bottom: 2px; }
-        #video-container { position: relative; width: 640px; height: 360px; background: #000; border-radius: 4px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 1px solid #333; }
-        #player { width: 100%; height: 100%; pointer-events: none; } /* Prevents accidental clicks */
-        #progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: rgba(0,0,0,0.5); z-index: 11; }
-        #progress-fill { height: 100%; width: 0%; background: var(--accent); box-shadow: 0 0 10px var(--accent); transition: width 0.5s linear; }
+        body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+        
+        #video-container {
+            position: relative;
+            width: 640px; 
+            height: 360px;
+            background: #000;
+            /* REMOVED: Rounded corners and box-shadow */
+            border-radius: 0; 
+            box-shadow: none;
+            overflow: hidden;
+            border: 1px solid #333; /* Subtle guide for cropping */
+        }
+
+        #player { width: 100%; height: 100%; }
+
+        #progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(0,0,0,0.5);
+        }
+
+        #progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            transition: width 0.5s linear;
+        }
     </style>
 </head>
 <body>
-    <div id="stage-wrapper">
-        <div id="request-label">
-            <span id="display-user" class="requested-by">WAITING FOR REQUESTS</span>
-            <span id="display-title" class="song-title">STARTING SOON</span>
-        </div>
-        <div id="video-container">
-            <div id="player"></div>
-            <div id="progress-container"><div id="progress-fill"></div></div>
-        </div>
+    <div id="video-container">
+        <div id="player"></div>
+        <div id="progress-container"><div id="progress-fill"></div></div>
     </div>
 
     <script>
@@ -42,35 +59,15 @@
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
                 height: '360', width: '640', videoId: '',
-                playerVars: { 
-                    'autoplay': 1,       // Force Start
-                    'mute': 1,           // MANDATORY: Browsers only allow autoplay if muted
-                    'controls': 0, 
-                    'modestbranding': 1, 
-                    'rel': 0, 
-                    'disablekb': 1,
-                    'origin': window.location.origin
-                },
-                events: {
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange
-                }
+                playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0, 'disablekb': 1 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
             });
         }
 
         function onPlayerReady(event) {
             database.ref('currentlyPlaying').on('value', snapshot => {
                 const data = snapshot.val();
-                if (data) {
-                    document.getElementById('display-title').innerText = data.title;
-                    document.getElementById('display-user').innerText = `REQUESTED BY: ${data.user}`;
-                    player.loadVideoById({
-                        videoId: data.id,
-                        suggestedQuality: 'hd720'
-                    });
-                    // We must tell it to play after loading
-                    player.playVideo(); 
-                }
+                if (data) { player.loadVideoById(data.id); player.playVideo(); }
             });
 
             database.ref('controls').on('child_added', snapshot => {
@@ -80,29 +77,23 @@
                     case 'play': player.playVideo(); break;
                     case 'pause': player.pauseVideo(); break;
                     case 'seek': player.seekTo(data.value); break;
-                    case 'mute':
-                        if (player.isMuted()) player.unMute();
-                        else player.mute();
-                        break;
+                    case 'mute': player.isMuted() ? player.unMute() : player.mute(); break;
                 }
                 snapshot.ref.remove();
             });
 
             setInterval(() => {
-                if (player && player.getCurrentTime && player.getDuration) {
+                if (player && player.getCurrentTime) {
                     const current = player.getCurrentTime();
                     const total = player.getDuration();
                     database.ref('playbackTime').set({ current, total });
-                    const percent = (total > 0) ? (current / total) * 100 : 0;
-                    document.getElementById('progress-fill').style.width = percent + "%";
+                    document.getElementById('progress-fill').style.width = ((current/total)*100) + "%";
                 }
             }, 1000);
         }
 
         function onPlayerStateChange(event) {
-            let state = "paused";
-            if (event.data == YT.PlayerState.PLAYING) state = "playing";
-            database.ref('playerStatus').set(state);
+            database.ref('playerStatus').set(event.data == 1 ? "playing" : "paused");
         }
     </script>
 </body>
