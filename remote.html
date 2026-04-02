@@ -60,9 +60,24 @@
         .play-now { background: #222; color: var(--accent); border: 1px solid var(--accent); padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; }
         .trash { color: var(--danger); font-size: 1.4rem; border: none; background: none; }
 
+        /* FOOTER TOOLS */
         .footer-tools { margin-top: 30px; display: flex; flex-direction: column; gap: 10px; }
         .btn-debug { background: #1a1a1a; color: #00ffcc; border: 1px solid #00ffcc; padding: 15px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
-        .btn-danger-wide { width: 100%; padding: 20px; background: #201010; color: var(--danger); border: 1px solid var(--danger); border-radius: 12px; font-weight: bold; }
+        
+        /* THE CLEAR BUTTON */
+        .btn-danger-wide { 
+            width: 100%; padding: 20px; 
+            background: #201010; color: var(--danger); 
+            border: 1px solid var(--danger); border-radius: 12px; 
+            font-weight: bold; transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .btn-danger-wide.confirming { 
+            background: var(--danger); 
+            color: #000; 
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -113,6 +128,7 @@
         let currentInput = "";
         const firebaseConfig = { databaseURL: "https://drumrequests-default-rtdb.europe-west1.firebasedatabase.app/" };
         let database, lastAction = null, currentSongState = null, currentPlayTime = 0, currentPlayerState = "paused";
+        let clearConfirmTimer = null;
 
         function pressNum(n) {
             const display = document.getElementById('pin-dots');
@@ -225,21 +241,40 @@
                 });
             };
 
+            // IN-BUTTON CLEAR LOGIC
             window.clearQueue = () => {
-                if(confirm("Wipe all requests?")) database.ref('queue').remove();
+                const btn = document.getElementById('clear-btn');
+                
+                if (!btn.classList.contains('confirming')) {
+                    // Stage 1: Prime the button
+                    btn.classList.add('confirming');
+                    btn.innerText = "ARE YOU SURE? (TAP AGAIN)";
+                    
+                    // Reset after 3 seconds
+                    clearConfirmTimer = setTimeout(() => {
+                        btn.classList.remove('confirming');
+                        btn.innerText = "CLEAR ALL QUEUE";
+                    }, 3000);
+                } else {
+                    // Stage 2: Confirmed!
+                    clearTimeout(clearConfirmTimer);
+                    database.ref('queue').remove();
+                    btn.classList.remove('confirming');
+                    btn.innerText = "QUEUE WIPED!";
+                    setTimeout(() => { btn.innerText = "CLEAR ALL QUEUE"; }, 2000);
+                }
             };
 
-            // UPDATED SAMPLE PLAYLIST LOGIC
             window.populateQueue = () => {
                 const samples = [
-                    { id: "BE9CXWV1alg", title: "Limp Bizkit - My Generation", user: "FredDurst" },
-                    { id: "eVTXPUF4Oz4", title: "Linkin Park - In The End", user: "MikeShinoda" },
-                    { id: "9d4ui9q7eDM", title: "Megadeth - Holy Wars", user: "DaveMustaine" },
-                    { id: "8Ik9qECIWgc", title: "Dream Theater - Dance of Eternity", user: "JohnPetrucci" },
-                    { id: "2ti7MRMy8BA", title: "Turtles in Time - Shell-Shock", user: "MasterSplinter" },
-                    { id: "TAqZb52sgpU", title: "Alice In Chains - Man in the Box", user: "JerryCantrell" },
-                    { id: "jdWhJcrrjQs", title: "Architects - Animals", user: "SamCarter" },
-                    { id: "BiP0FpY88E4", title: "Electric Callboy - Elevator Operator", user: "FrankZummo" }
+                    { id: "BE9CXWV1alg", title: "Limp Bizkit - My Generation", user: "Sample" },
+                    { id: "eVTXPUF4Oz4", title: "Linkin Park - In The End", user: "Sample" },
+                    { id: "9d4ui9q7eDM", title: "Megadeth - Holy Wars", user: "Sample" },
+                    { id: "8Ik9qECIWgc", title: "Dream Theater - Dance of Eternity", user: "Sample" },
+                    { id: "2ti7MRMy8BA", title: "Turtles in Time - Shell-Shock", user: "Sample" },
+                    { id: "TAqZb52sgpU", title: "Alice In Chains - Man in the Box", user: "Sample" },
+                    { id: "jdWhJcrrjQs", title: "Architects - Animals", user: "Sample" },
+                    { id: "BiP0FpY88E4", title: "Electric Callboy - Elevator Operator", user: "Sample" }
                 ];
                 samples.forEach((s, i) => {
                     database.ref('queue').push({ ...s, sortOrder: i });
