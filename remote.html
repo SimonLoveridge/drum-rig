@@ -232,14 +232,14 @@
             // UPDATED SAMPLE PLAYLIST LOGIC
             window.populateQueue = () => {
                 const samples = [
-                    { id: "BE9CXWV1alg", title: "Limp Bizkit - My Generation", user: "Sample" },
-                    { id: "eVTXPUF4Oz4", title: "Linkin Park - In The End", user: "Sample" },
-                    { id: "9d4ui9q7eDM", title: "Megadeth - Holy Wars", user: "Sample" },
-                    { id: "8Ik9qECIWgc", title: "Dream Theater - Dance of Eternity", user: "Sample" },
-                    { id: "2ti7MRMy8BA", title: "Turtles in Time - Shell-Shock", user: "Sample" },
-                    { id: "TAqZb52sgpU", title: "Alice In Chains - Man in the Box", user: "Sample" },
-                    { id: "jdWhJcrrjQs", title: "Architects - Animals", user: "Sample" },
-                    { id: "BiP0FpY88E4", title: "Electric Callboy - Elevator Operator", user: "Sample" }
+                    { id: "BE9CXWV1alg", title: "Limp Bizkit - My Generation", user: "FredDurst" },
+                    { id: "eVTXPUF4Oz4", title: "Linkin Park - In The End", user: "MikeShinoda" },
+                    { id: "9d4ui9q7eDM", title: "Megadeth - Holy Wars", user: "DaveMustaine" },
+                    { id: "8Ik9qECIWgc", title: "Dream Theater - Dance of Eternity", user: "JohnPetrucci" },
+                    { id: "2ti7MRMy8BA", title: "Turtles in Time - Shell-Shock", user: "MasterSplinter" },
+                    { id: "TAqZb52sgpU", title: "Alice In Chains - Man in the Box", user: "JerryCantrell" },
+                    { id: "jdWhJcrrjQs", title: "Architects - Animals", user: "SamCarter" },
+                    { id: "BiP0FpY88E4", title: "Electric Callboy - Elevator Operator", user: "FrankZummo" }
                 ];
                 samples.forEach((s, i) => {
                     database.ref('queue').push({ ...s, sortOrder: i });
